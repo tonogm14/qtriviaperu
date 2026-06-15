@@ -183,7 +183,7 @@ function ExportModal({ onClose }: { onClose: () => void }) {
       const token = (() => {
         try { return JSON.parse(localStorage.getItem('qtrivia-admin') ?? '{}')?.state?.token ?? '' } catch { return '' }
       })()
-      const url = `http://localhost:3002${shopApi.exportUrl(type, from || undefined, to || undefined)}`
+      const url = `${import.meta.env.VITE_API_URL ?? 'http://localhost:3002'}${shopApi.exportUrl(type, from || undefined, to || undefined)}`
       const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       const blob = await r.blob()
       const a = document.createElement('a')

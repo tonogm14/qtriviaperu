@@ -87,7 +87,7 @@ function useSocketConnection(gameId: string | null) {
     setAlivePlayers([])
     setLifeEvents([])
 
-    const socket = io('http://localhost:3002', { transports: ['websocket', 'polling'] })
+    const socket = io(import.meta.env.VITE_API_URL ?? 'http://localhost:3002', { transports: ['websocket', 'polling'] })
     socketRef.current = socket
 
     socket.on('connect', () => {
