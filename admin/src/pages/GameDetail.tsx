@@ -371,7 +371,7 @@ export function GameDetail() {
         <Kpi label="Inscritos" icon={Users} value={String((game._count as any)?.entries ?? totalEntries)} trend="flat" />
         <Kpi label="Preguntas" icon={HelpCircle} value={String((game._count as any)?.questions ?? questions.length)} trend="flat" />
         <Kpi label="Premio" value={`S/ ${(game.prize ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`} trend="flat" />
-        {(game.status === 'FINISHED' || game.status === 'ARCHIVED' || game.status === 'ARCHIVED') && (
+        {(game.status === 'FINISHED' || game.status === 'ARCHIVED') && (
           <Kpi label="Premio distribuido" icon={Crown} value={`S/ ${totalPrize.toFixed(2)}`} trend="flat" />
         )}
         {(game as any).entryFee > 0 && (

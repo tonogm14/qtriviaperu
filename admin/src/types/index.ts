@@ -5,6 +5,7 @@ export type GameStatus =
   | 'LIVE'
   | 'FINISHED'
   | 'CANCELLED'
+  | 'ARCHIVED'
   // Legacy frontend-only statuses (kept for UI badge mapping)
   | 'borrador'
   | 'programado'

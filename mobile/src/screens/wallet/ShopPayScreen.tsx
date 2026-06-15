@@ -92,7 +92,7 @@ export const ShopPayScreen: React.FC<Props> = ({ navigation, route }) => {
       ? `Yapea S/${total.toFixed(2)} al 9XX-XXX-XXX\nAsunto: "QTrivia${type === 'lives' ? ' vidas' : ' merch'}"`
       : method === 'plin'
       ? `Plin S/${total.toFixed(2)} al 9XX-XXX-XXX\nAsunto: "QTrivia${type === 'lives' ? ' vidas' : ' merch'}"`
-      : `Paga S/${total.toFixed(2)} con tarjeta en qtriviaperu.com/pago`;
+      : `Paga S/${total.toFixed(2)} con tarjeta en qtrivia.com/pago`;
 
   const successTitle  = type === 'lives' ? '¡Vidas añadidas!' : '¡Pedido recibido!';
   const successDetail =

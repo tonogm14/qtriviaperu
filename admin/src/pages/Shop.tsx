@@ -186,7 +186,7 @@ function OrderDetailModal({ order, onClose }: { order: ShopOrder; onClose: () =>
   }
 
   return (
-    <Modal open onClose={onClose} title={`Pedido · ${order.item.emoji} ${order.item.name}`} width={480}
+    <Modal open onClose={onClose} title={`Pedido · ${order.items[0]?.emoji ?? '📦'} ${order.items[0]?.name ?? 'Pedido'}`} width={480}
       footer={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button kind="ghost" onClick={onClose}>Cerrar</Button>
@@ -205,9 +205,9 @@ function OrderDetailModal({ order, onClose }: { order: ShopOrder; onClose: () =>
         </div>
         {/* Order detail */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 13 }}>
-          <div><span style={{ color: 'var(--ink-400)' }}>Producto</span><br /><strong>{order.item.emoji} {order.item.name}</strong></div>
-          <div><span style={{ color: 'var(--ink-400)' }}>Cantidad</span><br /><strong>{order.quantity} und.</strong></div>
-          <div><span style={{ color: 'var(--ink-400)' }}>Total pagado</span><br /><strong style={{ color: 'var(--green-700)' }}>S/ {order.total.toFixed(2)}</strong></div>
+          <div><span style={{ color: 'var(--ink-400)' }}>Producto</span><br /><strong>{order.items[0]?.emoji ?? '📦'} {order.items[0]?.name ?? '—'}</strong></div>
+          <div><span style={{ color: 'var(--ink-400)' }}>Cantidad</span><br /><strong>{order.items.reduce((s, i) => s + i.quantity, 0)} und.</strong></div>
+          <div><span style={{ color: 'var(--ink-400)' }}>Total pagado</span><br /><strong style={{ color: 'var(--green-700)' }}>S/ {order.totalAmount.toFixed(2)}</strong></div>
           <div><span style={{ color: 'var(--ink-400)' }}>Método pago</span><br /><strong>{order.method.toUpperCase()}</strong></div>
           <div><span style={{ color: 'var(--ink-400)' }}>Fecha pedido</span><br /><strong>{new Date(order.createdAt).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></div>
           {order.address && <div><span style={{ color: 'var(--ink-400)' }}>Dirección</span><br /><strong>{order.address}</strong></div>}
@@ -278,7 +278,7 @@ export function Shop() {
   const confirmedCount = summaryMap['CONFIRMED']?._count?.id ?? 0
   const shippedCount   = summaryMap['SHIPPED']?._count?.id ?? 0
   const deliveredCount = summaryMap['DELIVERED']?._count?.id ?? 0
-  const totalRevenue   = orders.filter(o => o.status !== 'CANCELLED').reduce((s, o) => s + o.total, 0)
+  const totalRevenue   = orders.filter(o => o.status !== 'CANCELLED').reduce((s, o) => s + o.totalAmount, 0)
 
   return (
     <div className="fade-in">
@@ -352,8 +352,8 @@ export function Shop() {
               {!ordersLoading && filteredOrders.map(o => (
                 <tr key={o.id}>
                   <td>
-                    <div className="cell-strong">{o.item.emoji} {o.item.name}</div>
-                    <div className="cell-meta">{o.quantity} und. · {new Date(o.createdAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
+                    <div className="cell-strong">{o.items[0]?.emoji ?? '📦'} {o.items[0]?.name ?? '—'}</div>
+                    <div className="cell-meta">{o.items.reduce((s, i) => s + i.quantity, 0)} und. · {new Date(o.createdAt).toLocaleDateString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                   </td>
                   <td>
                     <div className="cell-strong">{o.user.name}</div>
@@ -365,7 +365,7 @@ export function Shop() {
                     {o.address && <div style={{ color: 'var(--ink-400)' }}>{o.address}</div>}
                   </td>
                   <td><Badge tone="gray">{o.method.toUpperCase()}</Badge></td>
-                  <td className="cell-mono" style={{ textAlign: 'right', fontWeight: 700 }}>S/ {o.total.toFixed(2)}</td>
+                  <td className="cell-mono" style={{ textAlign: 'right', fontWeight: 700 }}>S/ {o.totalAmount.toFixed(2)}</td>
                   <td><Badge tone={statusTone(o.status) as any}>{statusLabel(o.status)}</Badge></td>
                   <td>
                     <IconButton title="Ver / actualizar" onClick={() => setViewOrder(o)}>

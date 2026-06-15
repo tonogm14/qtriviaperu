@@ -35,14 +35,14 @@ function apiStatusToTab(status: string): string {
 function gameTime(g: Game): string {
   if (g.time) return g.time
   if (g.scheduledAt) {
-    return new Date(g.scheduledAt).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Lima' })
+    return new Date(g.scheduledAt!).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Lima' })
   }
   return '—'
 }
 
 function gameDate(g: Game): string {
   if (g.date) return g.date
-  if (g.scheduledAt) return new Date(g.scheduledAt).toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+  if (g.scheduledAt) return new Date(g.scheduledAt!).toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
   return '—'
 }
 
@@ -558,7 +558,7 @@ export function Games() {
   // Derive available months from loaded games
   const availableMonths = Array.from(new Set(
     games.map((g) => {
-      const d = new Date(g.scheduledAt)
+      const d = new Date(g.scheduledAt!)
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     })
   )).sort()
@@ -566,7 +566,7 @@ export function Games() {
   const gamesByTab = tab === 'todos' ? games : games.filter((g) => apiStatusToTab(g.status) === tab)
   const filtered = selectedMonth
     ? gamesByTab.filter((g) => {
-        const d = new Date(g.scheduledAt)
+        const d = new Date(g.scheduledAt!)
         const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
         return m === selectedMonth
       })
@@ -576,7 +576,7 @@ export function Games() {
     const base = games.filter((g) => apiStatusToTab(g.status) === tabValue)
     if (!selectedMonth) return base.length
     return base.filter((g) => {
-      const d = new Date(g.scheduledAt)
+      const d = new Date(g.scheduledAt!)
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === selectedMonth
     }).length
   }

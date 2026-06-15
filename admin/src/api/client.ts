@@ -50,7 +50,7 @@ api.interceptors.response.use(
 // ─── GAMES API ────────────────────────────────────────────────────────────────
 
 export const gamesApi = {
-  list: (params?: { status?: string; date?: string }) =>
+  list: (params?: { status?: string; date?: string; limit?: number }) =>
     api.get<{ data: Game[] }>('/api/games', { params }),
   get: (id: string) =>
     api.get<{ data: Game }>(`/api/games/${id}`),
