@@ -1,1 +1,0 @@
-{"version":3,"file":"gameSocket.d.ts","sourceRoot":"","sources":["../../src/socket/gameSocket.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,IAAI,YAAY,EAAU,MAAM,WAAW,CAAC;AAkE3D,wBAAgB,cAAc,CAAC,EAAE,EAAE,YAAY,GAAG,IAAI,CAiSrD;AAID;;GAEG;AACH,wBAAsB,kBAAkB,CAAC,EAAE,EAAE,YAAY,EAAE,MAAM,EAAE,MAAM,EAAE,QAAQ,UAAQ,GAAG,OAAO,CAAC,IAAI,CAAC,CAwB1G"}
