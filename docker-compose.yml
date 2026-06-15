@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: qtrivia-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: qtrivia
+      POSTGRES_PASSWORD: qtrivia_pass
+      POSTGRES_DB: qtriviaperu
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qtrivia -d qtriviaperu"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: qtrivia-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://qtrivia:qtrivia_pass@db:5432/qtriviaperu
+      JWT_SECRET: super-secret-jwt-key-change-in-prod
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost:19006
+      TZ: America/Lima
+      WITHDRAWAL_MIN_AMOUNT: "20"
+      WITHDRAWAL_BANK_FEE: "2"
+    ports:
+      - "3001:3001"
+    command: >
+      sh -c "
+        npx prisma migrate deploy &&
+        node dist/index.js
+      "
+
+volumes:
+  pgdata:

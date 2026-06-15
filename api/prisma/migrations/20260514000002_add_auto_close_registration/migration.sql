@@ -1,0 +1,1 @@
+ALTER TABLE "AppConfig" ADD COLUMN IF NOT EXISTS "autoCloseRegistration" BOOLEAN NOT NULL DEFAULT true;

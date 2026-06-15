@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "QTriviaPeru",
+    "slug": "qtriviaperu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3B0764"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.qtriviaperu.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3B0764"
+      },
+      "package": "com.qtriviaperu.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-notifications",
+      "expo-video"
+    ],
+    "newArchEnabled": true,
+    "sdkVersion": "54.0.0"
+  }
+}

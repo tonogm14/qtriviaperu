@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Background circle -->
+  <defs>
+    <radialGradient id="bg" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#4C1D95"/>
+      <stop offset="100%" stop-color="#3B0764"/>
+    </radialGradient>
+  </defs>
+  <circle cx="64" cy="64" r="64" fill="url(#bg)"/>
+
+  <!-- White ring (border ~17px = 128*0.13) -->
+  <circle cx="64" cy="64" r="55.5" fill="none" stroke="white" stroke-width="17"/>
+
+  <!-- Yellow tail: bottom:-8, right:-3, w:44, h:23, rotate 35deg around its center -->
+  <rect x="87" y="113" width="44" height="23" rx="5" fill="#FACC15"
+        transform="rotate(35 109 124.5)"/>
+
+  <!-- Pink square: bottom:0, right:8, w:18, h:18, rotate 35deg around its center -->
+  <rect x="102" y="110" width="18" height="18" rx="4" fill="#EC4899"
+        transform="rotate(35 111 119)"/>
+
+  <!-- Center sparkle at top:31, left:51, size:26 -->
+  <svg x="51" y="31" width="26" height="26" viewBox="0 0 24 24">
+    <path d="M12 2c0.5 4.4 3.6 7.5 8 8-4.4 0.5-7.5 3.6-8 8-0.5-4.4-3.6-7.5-8-8 4.4-0.5 7.5-3.6 8-8z" fill="#EC4899"/>
+  </svg>
+</svg>

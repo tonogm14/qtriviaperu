@@ -1,0 +1,21 @@
+import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '../types';
+export declare function listProducts(_req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function buyLives(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+export declare function orderMerch(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+export declare function listPacksAdmin(_req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function createPack(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function updatePack(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function deletePack(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function listMerchAdmin(_req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function createMerch(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function updateMerch(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function deleteMerch(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function listOrders(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function updateOrderStatus(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function cartCheckout(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+export declare function myOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+export declare function listLifeOrders(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function listVipEntries(req: Request, res: Response, next: NextFunction): Promise<void>;
+export declare function exportSales(req: Request, res: Response, next: NextFunction): Promise<void>;
+//# sourceMappingURL=shop.controller.d.ts.map
