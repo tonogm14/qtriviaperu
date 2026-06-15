@@ -63,6 +63,12 @@ app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ─── Robots ───────────────────────────────────────────────────────────────────
+
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain').send('User-agent: *\nDisallow: /\n');
+});
+
 // ─── Health Check ─────────────────────────────────────────────────────────────
 
 app.get('/health', (_req, res) => {
