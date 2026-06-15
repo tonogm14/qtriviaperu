@@ -76,12 +76,12 @@ export async function loginUser(data: {
   });
 
   if (!user) {
-    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    throw new AppError('Usuario o clave inválidos', 401, 'INVALID_CREDENTIALS');
   }
 
   const isPasswordValid = await bcrypt.compare(data.password, user.password);
   if (!isPasswordValid) {
-    throw new AppError('Invalid email or password', 401, 'INVALID_CREDENTIALS');
+    throw new AppError('Usuario o clave inválidos', 401, 'INVALID_CREDENTIALS');
   }
 
   if (user.isArchived) {

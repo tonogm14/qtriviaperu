@@ -83,6 +83,7 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [gameWinners, setGameWinners] = useState<Array<{ username: string; prize: number }>>([]);
   const [totalPrize, setTotalPrize] = useState(0);
+  const [isWarmup, setIsWarmup] = useState(false);
 
   // Fetch game data on mount so we know entryFee for join routing (works for FREE, VIP and SPECIAL)
   useEffect(() => {
@@ -195,6 +196,7 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
         revealTimerRef.current = null;
       }
       setShowEliminatedModal(false); // hide modal when next question arrives
+      setIsWarmup(!!data.isWarmup);
       setCurrentQuestion({
         text: data.question || data.text || '',
         answers: data.answers || data.options || [],
@@ -226,6 +228,14 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
     onReveal((data: any) => {
       setRevealCorrect(data.correctIndex ?? 0);
       setPhase('reveal');
+      if (data.isWarmup) {
+        // Warmup: just show feedback, no eliminations
+        revealTimerRef.current = setTimeout(() => {
+          revealTimerRef.current = null;
+          setPhase('waiting');
+        }, 3000);
+        return;
+      }
       const eliminated: string[] = data.eliminated ?? [];
       const wasEliminated = !!user?.id && eliminated.includes(user.id);
       // Return to full-screen presenter after 2 seconds (cancelled if next question arrives first)
@@ -419,9 +429,9 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
       {currentQuestion && (
         <Animated.View style={[styles.questionCard, cardAnimStyle]}>
           <View style={styles.questionNumRow}>
-            <SparkleMotif size={12} color="#9333EA" />
-            <Text style={styles.questionNum}>
-              PREGUNTA {questionIdx + 1}{totalQuestions > 0 ? `/${totalQuestions}` : ''}
+            <SparkleMotif size={12} color={isWarmup ? '#059669' : '#9333EA'} />
+            <Text style={[styles.questionNum, isWarmup && { color: '#059669' }]}>
+              {isWarmup ? '🧪 PREGUNTA DE PRUEBA' : `PREGUNTA ${questionIdx + 1}${totalQuestions > 0 ? `/${totalQuestions}` : ''}`}
             </Text>
             {isEliminated && (
               <View style={styles.eliminatedBadge}>
@@ -532,7 +542,8 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
       )}
 
 
-      {/* ── PARTICIPAR (registration still open, user not joined) ── */}
+
+      {/* ── PARTICIPAR — solo si registro abierto y no suscrito ── */}
       {!isRegistered && !registrationClosed && phase !== 'finished' && (
         <View style={styles.joinBanner}>
           {(gameData?.entryFee ?? 0) > 0 ? (

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { CheckCircle, Lock, Wifi, WifiOff } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
+import { Modal } from '../components/ui/Modal'
+import { Button } from '../components/ui/Button'
 import { io, Socket } from 'socket.io-client'
 import { useGames, useGame } from '../api/hooks'
 import { gamesApi } from '../api/client'
@@ -85,7 +87,7 @@ function useSocketConnection(gameId: string | null) {
     setAlivePlayers([])
     setLifeEvents([])
 
-    const socket = io('http://localhost:3001', { transports: ['websocket', 'polling'] })
+    const socket = io('http://localhost:3002', { transports: ['websocket', 'polling'] })
     socketRef.current = socket
 
     socket.on('connect', () => {
@@ -234,6 +236,7 @@ export function LiveMonitor() {
   const [running, setRunning] = useState(false)
   const [closingReg, setClosingReg] = useState(false)
   const [regClosed, setRegClosed] = useState(false)
+  const [confirmFinish, setConfirmFinish] = useState(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const { data: games } = useGames()
@@ -681,7 +684,7 @@ export function LiveMonitor() {
             </div>
           </div>
           <button
-            onClick={() => emitEndGame(gameId)}
+            onClick={() => setConfirmFinish(true)}
             style={{
               padding: '10px 24px',
               background: 'linear-gradient(135deg, #EF4444, #EC4899)',
@@ -698,6 +701,34 @@ export function LiveMonitor() {
           >
             Finalizar juego
           </button>
+
+          <Modal
+            open={confirmFinish}
+            onClose={() => setConfirmFinish(false)}
+            title="¿Finalizar el juego?"
+            width={420}
+            footer={
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <Button kind="ghost" onClick={() => setConfirmFinish(false)}>Cancelar</Button>
+                <Button
+                  kind="primary"
+                  onClick={() => { setConfirmFinish(false); emitEndGame(gameId) }}
+                  style={{ background: 'linear-gradient(135deg, #EF4444, #EC4899)', boxShadow: '0 4px 16px rgba(239,68,68,0.35)' }}
+                >
+                  Sí, finalizar
+                </Button>
+              </div>
+            }
+          >
+            <div style={{ display: 'grid', gap: 12 }}>
+              <p style={{ margin: 0, fontSize: 14, color: 'var(--ink-700)', lineHeight: 1.5 }}>
+                Esta acción cerrará el juego, calculará los ganadores y notificará a todos los jugadores. <strong>No se puede deshacer.</strong>
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-500)' }}>
+                Asegúrate de que el host en vivo ya se despidió antes de continuar.
+              </p>
+            </div>
+          </Modal>
         </div>
       )}
 

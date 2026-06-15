@@ -49,7 +49,7 @@ export async function requestWithdrawal(
   // Minimum amount
   if (amount < config.withdrawal.minAmount) {
     throw new AppError(
-      `Minimum withdrawal amount is S/${config.withdrawal.minAmount}`,
+      `El monto mínimo de retiro es S/${config.withdrawal.minAmount}`,
       400,
       'BELOW_MINIMUM'
     );
@@ -57,14 +57,14 @@ export async function requestWithdrawal(
 
   // Get user balance
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new AppError('User not found', 404, 'NOT_FOUND');
+  if (!user) throw new AppError('Usuario no encontrado', 404, 'NOT_FOUND');
 
   const walletMethods = ['yape', 'plin'];
   const fee = walletMethods.includes(method) ? 0 : config.withdrawal.bankFee;
   const netAmount = amount - fee;
 
   if (user.balance < amount) {
-    throw new AppError('Insufficient balance', 400, 'INSUFFICIENT_BALANCE');
+    throw new AppError('Saldo insuficiente', 400, 'INSUFFICIENT_BALANCE');
   }
 
   const code = await generateUniqueCode();
@@ -123,7 +123,7 @@ export async function updateWithdrawalStatus(
     include: { user: true },
   });
 
-  if (!withdrawal) throw new AppError('Withdrawal not found', 404, 'NOT_FOUND');
+  if (!withdrawal) throw new AppError('Retiro no encontrado', 404, 'NOT_FOUND');
 
   await prisma.$transaction(async (tx) => {
     await tx.withdrawal.update({ where: { id: withdrawalId }, data: { status } });

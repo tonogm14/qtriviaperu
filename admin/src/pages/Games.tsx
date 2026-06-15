@@ -27,8 +27,9 @@ function apiStatusToTab(status: string): string {
     LIVE: 'envivo',
     FINISHED: 'finalizado',
     CANCELLED: 'cancelado',
+    ARCHIVED: 'cancelado',
   }
-  return map[status] ?? 'programado'
+  return map[status] ?? 'cancelado'
 }
 
 function gameTime(g: Game): string {
@@ -548,17 +549,37 @@ export function Games() {
   const [cancelTarget, setCancelTarget] = useState<Game | null>(null)
   const [archiveTarget, setArchiveTarget] = useState<Game | null>(null)
   const [deleteRecurringTarget, setDeleteRecurringTarget] = useState<Game | null>(null)
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null) // "YYYY-MM"
 
-  const { data: games = [], isLoading, isError, refetch } = useGames()
+  const { data: games = [], isLoading, isError, refetch } = useGames({ limit: 100 })
   const deleteGame = useDeleteGame()
   const updateGame = useUpdateGame()
 
-  const filtered = tab === 'todos'
-    ? games
-    : games.filter((g) => apiStatusToTab(g.status) === tab)
+  // Derive available months from loaded games
+  const availableMonths = Array.from(new Set(
+    games.map((g) => {
+      const d = new Date(g.scheduledAt)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    })
+  )).sort()
 
-  const countFor = (tabValue: string) =>
-    games.filter((g) => apiStatusToTab(g.status) === tabValue).length
+  const gamesByTab = tab === 'todos' ? games : games.filter((g) => apiStatusToTab(g.status) === tab)
+  const filtered = selectedMonth
+    ? gamesByTab.filter((g) => {
+        const d = new Date(g.scheduledAt)
+        const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        return m === selectedMonth
+      })
+    : gamesByTab
+
+  const countFor = (tabValue: string) => {
+    const base = games.filter((g) => apiStatusToTab(g.status) === tabValue)
+    if (!selectedMonth) return base.length
+    return base.filter((g) => {
+      const d = new Date(g.scheduledAt)
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === selectedMonth
+    }).length
+  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este juego?')) return
@@ -643,7 +664,29 @@ export function Games() {
       <Card noPad>
         <div className="table-toolbar">
           <Button kind="ghost" size="sm" icon={Filter}>Filtros</Button>
-          <Button kind="ghost" size="sm" icon={Calendar}>Mayo 2026</Button>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <select
+              value={selectedMonth ?? ''}
+              onChange={(e) => setSelectedMonth(e.target.value || null)}
+              style={{
+                appearance: 'none', cursor: 'pointer',
+                paddingLeft: 28, paddingRight: 24, paddingTop: 6, paddingBottom: 6,
+                border: selectedMonth ? '1.5px solid var(--brand-400,#a78bfa)' : '1.5px solid var(--ink-200)',
+                borderRadius: 8, fontSize: 13, fontWeight: 600,
+                background: selectedMonth ? 'var(--brand-50,#f5f3ff)' : 'var(--ink-0,#fff)',
+                color: selectedMonth ? 'var(--brand-700,#6d28d9)' : 'var(--ink-600)',
+              }}
+            >
+              <option value="">Todos los meses</option>
+              {availableMonths.map((ym) => {
+                const [y, m] = ym.split('-')
+                const label = new Date(Number(y), Number(m) - 1, 1)
+                  .toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })
+                return <option key={ym} value={ym}>{label.charAt(0).toUpperCase() + label.slice(1)}</option>
+              })}
+            </select>
+            <Calendar size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: selectedMonth ? 'var(--brand-600,#7c3aed)' : 'var(--ink-400)' }} />
+          </div>
           <span className="table-count">{filtered.length} juegos</span>
           <IconButton title="Recargar" onClick={() => refetch()}>
             <RefreshCw size={14} />

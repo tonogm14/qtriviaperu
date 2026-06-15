@@ -14,7 +14,7 @@ export interface LedgerEntry {
 }
 
 const api = axios.create({
-  baseURL: 'http://localhost:3001',
+  baseURL: (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3002',
   timeout: 8000,
 })
 
@@ -68,8 +68,8 @@ export const gamesApi = {
     api.post(`/api/games/${id}/close-registration`),
   getStream: (id: string) =>
     api.get<{ data: { streamUrl: string; streamKey: string; rtmpServer: string; rtmpUrl: string } | null }>(`/api/games/${id}/stream`),
-  createStream: (id: string, data: { streamUrl: string; streamKey: string }) =>
-    api.post<{ data: { streamUrl: string; streamKey: string; rtmpServer: string; rtmpUrl: string } }>(`/api/games/${id}/stream`, data),
+  createStream: (id: string) =>
+    api.post<{ data: { streamUrl: string; streamKey: string; rtmpServer: string; rtmpUrl: string } }>(`/api/games/${id}/stream`),
   deleteStream: (id: string) =>
     api.delete(`/api/games/${id}/stream`),
   entries: (id: string, search?: string) =>
@@ -94,13 +94,13 @@ export interface GameEntry {
 // ─── QUESTIONS API ────────────────────────────────────────────────────────────
 
 export const questionsApi = {
-  list: (params?: { category?: string; difficulty?: string; search?: string; page?: number; limit?: number }) =>
+  list: (params?: { category?: string; difficulty?: string; search?: string; page?: number; limit?: number; archived?: boolean }) =>
     api.get<{ data: Question[]; total: number }>('/api/questions', { params }),
   get: (id: string) =>
     api.get<{ data: Question }>(`/api/questions/${id}`),
   create: (data: Partial<Question>) =>
     api.post<{ data: Question }>('/api/questions', data),
-  update: (id: string, data: Partial<Question>) =>
+  update: (id: string, data: Partial<Question> & { isArchived?: boolean }) =>
     api.put<{ data: Question }>(`/api/questions/${id}`, data),
   delete: (id: string) =>
     api.delete(`/api/questions/${id}`),

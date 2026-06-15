@@ -28,18 +28,18 @@ export async function joinGame(userId: string, gameId: string): Promise<void> {
     prisma.game.findUnique({ where: { id: gameId } }),
   ]);
 
-  if (!user) throw new AppError('User not found', 404, 'NOT_FOUND');
-  if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
+  if (!user) throw new AppError('Usuario no encontrado', 404, 'NOT_FOUND');
+  if (!game) throw new AppError('Juego no encontrado', 404, 'NOT_FOUND');
 
   if (game.status !== GameStatus.PENDING && game.status !== GameStatus.LOBBY && game.status !== GameStatus.LIVE) {
-    throw new AppError('Game is not accepting new players', 400, 'GAME_NOT_JOINABLE');
+    throw new AppError('El juego no está aceptando nuevos jugadores', 400, 'GAME_NOT_JOINABLE');
   }
 
   const existingEntry = await prisma.gameEntry.findUnique({
     where: { userId_gameId: { userId, gameId } },
   });
   if (existingEntry) {
-    throw new AppError('You have already joined this game', 400, 'ALREADY_JOINED');
+    throw new AppError('Ya te uniste a este juego', 400, 'ALREADY_JOINED');
   }
 
   if (game.entryFee > 0) {
@@ -76,10 +76,10 @@ export async function startGame(gameId: string): Promise<void> {
     where: { id: gameId },
     include: { questions: { select: { questionId: true, order: true } } },
   });
-  if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
+  if (!game) throw new AppError('Juego no encontrado', 404, 'NOT_FOUND');
 
   if (game.status !== GameStatus.PENDING && game.status !== GameStatus.LOBBY) {
-    throw new AppError('Game cannot be started in its current status', 400, 'INVALID_STATUS');
+    throw new AppError('El juego no puede iniciarse en su estado actual', 400, 'INVALID_STATUS');
   }
 
   const entryCount = await prisma.gameEntry.count({ where: { gameId } });
@@ -168,6 +168,17 @@ export async function finishGame(gameId: string): Promise<{
 
   if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
 
+  // Atomic guard: only proceed if game is still LIVE.
+  // Prevents double-execution when admin ends game at the same time as the stuck-game scheduler.
+  const { count: claimed } = await prisma.game.updateMany({
+    where: { id: gameId, status: GameStatus.LIVE },
+    data: { status: GameStatus.ARCHIVED },
+  });
+  if (claimed === 0) {
+    // Already archived by another process — return silently
+    return { winner: null, winners: [], prize: 0 };
+  }
+
   let totalPrize: number;
   if (game.prizeMode === 'POT') {
     totalPrize = game.currentPot;
@@ -210,10 +221,13 @@ export async function finishGame(gameId: string): Promise<{
 
   // Distribute prizes + archive game in one transaction
   await prisma.$transaction(async (tx) => {
-    await tx.game.update({
-      where: { id: gameId },
-      data: { status: GameStatus.ARCHIVED, winnerId: winners.length > 0 ? winners[0].entry.userId : null },
-    });
+    // Set winnerId (status already set to ARCHIVED by the atomic guard above)
+    if (winners.length > 0) {
+      await tx.game.update({
+        where: { id: gameId },
+        data: { winnerId: winners[0].entry.userId },
+      });
+    }
 
     for (const { entry, prize } of winners) {
       const balanceAfterPrize = entry.user.balance + prize;
@@ -261,6 +275,16 @@ export async function finishGame(gameId: string): Promise<{
     });
     try {
       const nextScheduledAt = getNextOccurrenceUTC(game.recurringTime);
+
+      // Prevent duplicate next occurrences (race condition guard)
+      const alreadyExists = await prisma.game.findFirst({
+        where: {
+          sourceGameId: gameId,
+          status: { notIn: [GameStatus.ARCHIVED, GameStatus.CANCELLED] },
+        },
+      });
+      if (alreadyExists) return { winner: winnerList[0]?.username ?? null, winners: winnerList, prize: totalPrize };
+
       const nextGame = await prisma.game.create({
         data: {
           title: game.title,

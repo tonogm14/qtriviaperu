@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { JuvPillInput } from '../../components/JuvPillInput';
 import { JuvShapes } from '../../components/JuvShapes';
 import { SparkleMotif } from '../../components/JuvMotifs';
 import { useStore } from '../../store/useStore';
+import { gamesApi } from '../../services/api';
 
 interface Props {
   navigation: any;
@@ -26,7 +27,21 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [freePrize, setFreePrize] = useState<number | null>(null);
   const login = useStore((s) => s.login);
+
+  useEffect(() => {
+    gamesApi.list({ limit: 20 })
+      .then((res) => {
+        const games: any[] = res.data?.data || [];
+        const free = games.find((g) =>
+          (g.status === 'PENDING' || g.status === 'LOBBY' || g.status === 'LIVE') &&
+          (g.entryFee === 0 || !g.entryFee)
+        );
+        if (free?.prize) setFreePrize(free.prize);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) return;
@@ -73,9 +88,13 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.peruLabel}>· PERÚ ·</Text>
             <Text style={styles.subtitle}>
               Trivia en vivo todos los días.{'\n'}
-              <Text style={styles.prizeHighlight}>S/100</Text>
+              <Text style={styles.prizeHighlight}>S/{freePrize ?? 100}</Text>
               <Text style={styles.subtitleRest}> de premio · entrada gratis.</Text>
             </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')} style={{ marginTop: 10, flexDirection: 'row', gap: 4 }}>
+              <Text style={{ color: 'white', fontSize: 14, fontWeight: '500' }}>¿No tienes cuenta?</Text>
+              <Text style={styles.footerLink}>Crea tu cuenta →</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Form */}
@@ -125,30 +144,18 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Divider */}
             <View style={styles.divider}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>O CON</Text>
+              <Text style={styles.dividerText}>O</Text>
               <View style={styles.dividerLine} />
             </View>
 
             {/* Social buttons */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialBtnLight} activeOpacity={0.8}>
-                <Text style={styles.socialTextDark}>Google</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.socialBtnDark} activeOpacity={0.8}>
-                <Text style={styles.socialTextLight}>Apple</Text>
+              <TouchableOpacity style={[styles.socialBtnLight, { flex: 1 }]} activeOpacity={0.8}>
+                <Text style={styles.socialTextDark}>Continuar con Google</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              ¿Recién bajaste la app?{' '}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.footerLink}>Crea tu cuenta →</Text>
-            </TouchableOpacity>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>

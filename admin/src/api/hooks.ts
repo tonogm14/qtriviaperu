@@ -131,9 +131,9 @@ export const useGameStream = (id: string) =>
 export const useCreateStream = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, streamUrl, streamKey }: { id: string; streamUrl: string; streamKey: string }) =>
-      gamesApi.createStream(id, { streamUrl, streamKey }).then((r) => r.data.data),
-    onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: ['game-stream', vars.id] }),
+    mutationFn: (id: string) =>
+      gamesApi.createStream(id).then((r) => r.data.data),
+    onSuccess: (_d, id) => qc.invalidateQueries({ queryKey: ['game-stream', id] }),
   })
 }
 

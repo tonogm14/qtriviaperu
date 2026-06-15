@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS "AppConfig" (
+    "id" TEXT NOT NULL DEFAULT 'main',
+    "currency" TEXT NOT NULL DEFAULT 'PEN',
+    "defaultPrize" DOUBLE PRECISION NOT NULL DEFAULT 5000,
+    "defaultQuestions" INTEGER NOT NULL DEFAULT 12,
+    "defaultTime" INTEGER NOT NULL DEFAULT 10,
+    "pushBefore" INTEGER NOT NULL DEFAULT 10,
+    "autoAdvance" BOOLEAN NOT NULL DEFAULT false,
+    "chatModeration" BOOLEAN NOT NULL DEFAULT true,
+    "minWithdraw" DOUBLE PRECISION NOT NULL DEFAULT 100,
+    "feeYape" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "feePlin" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "feeBCP" DOUBLE PRECISION NOT NULL DEFAULT 5,
+    "feeInterbank" DOUBLE PRECISION NOT NULL DEFAULT 5,
+    "termsAndConditions" TEXT NOT NULL DEFAULT '',
+    "privacyPolicy" TEXT NOT NULL DEFAULT '',
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppConfig_pkey" PRIMARY KEY ("id")
+);

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { PrismaClient, GameStatus, GameType, Prisma } from '@prisma/client';
 import * as gameService from '../services/game.service';
-import { broadcastGameStart, isRegistrationClosed } from '../socket/gameSocket';
+import { broadcastGameStart, closeRegistrationOnly, isRegistrationClosed } from '../socket/gameSocket';
 import { io } from '../index';
 import { AuthRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
@@ -72,6 +72,7 @@ const createGameSchema = z.object({
   prizeMode: z.enum(['FIXED', 'POT', 'POT_PERCENT']).default('FIXED'),
   potPercent: z.number().min(1).max(100).default(100),
   streamUrl: z.string().url().optional().nullable(),
+  warmUpQuestionId: z.string().optional().nullable(),
 });
 
 const updateGameSchema = z.object({
@@ -91,6 +92,7 @@ const updateGameSchema = z.object({
   prizeMode: z.enum(['FIXED', 'POT', 'POT_PERCENT']).optional(),
   potPercent: z.number().min(1).max(100).optional(),
   streamUrl: z.string().url().optional().nullable(),
+  warmUpQuestionId: z.string().optional().nullable(),
 });
 
 const listGamesSchema = z.object({
@@ -157,7 +159,7 @@ export async function getGame(req: Request, res: Response, next: NextFunction): 
     });
 
     if (!game) {
-      res.status(404).json({ error: 'Game not found', code: 'NOT_FOUND' });
+      res.status(404).json({ error: 'Juego no encontrado', code: 'NOT_FOUND' });
       return;
     }
 
@@ -216,11 +218,11 @@ export async function updateGame(req: Request, res: Response, next: NextFunction
 export async function deleteGame(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const game = await prisma.game.findUnique({ where: { id: param(req, 'id') } });
-    if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
+    if (!game) throw new AppError('Juego no encontrado', 404, 'NOT_FOUND');
     if (game.isRecurring) throw new AppError('No se puede eliminar un juego recurrente (Gratis/VIP)', 400, 'CANNOT_DELETE_RECURRING');
 
     await prisma.game.delete({ where: { id: param(req, 'id') } });
-    res.json({ data: { message: 'Game deleted successfully' } });
+    res.json({ data: { message: 'Juego eliminado correctamente' } });
   } catch (err) {
     next(err);
   }
@@ -236,7 +238,7 @@ export async function setGameQuestions(req: Request, res: Response, next: NextFu
     }).parse(req.body);
 
     const game = await prisma.game.findUnique({ where: { id: gameId } });
-    if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
+    if (!game) throw new AppError('Juego no encontrado', 404, 'NOT_FOUND');
 
     // Replace all questions atomically
     await prisma.$transaction([
@@ -283,7 +285,7 @@ export async function joinGame(req: AuthRequest, res: Response, next: NextFuncti
       return;
     }
     await gameService.joinGame(req.user!.id, gameId);
-    res.json({ data: { message: 'Successfully joined the game' } });
+    res.json({ data: { message: 'Te uniste al juego correctamente' } });
   } catch (err) {
     next(err);
   }
@@ -293,19 +295,8 @@ export async function startGame(req: AuthRequest, res: Response, next: NextFunct
   try {
     const gameId = param(req as Request, 'id');
     await gameService.startGame(gameId);
-
-    // Auto-close registration if the global setting is enabled
-    const config = await prisma.appConfig.findUnique({
-      where: { id: 'main' },
-      select: { autoCloseRegistration: true },
-    });
-    if (config?.autoCloseRegistration !== false) {
-      broadcastGameStart(io, gameId, false).catch((err) =>
-        console.error('[startGame] broadcastGameStart error', err)
-      );
-    }
-
-    res.json({ data: { message: 'Game started successfully' } });
+    // Registration stays open — admin closes manually via closeRegistration
+    res.json({ data: { message: 'Juego iniciado correctamente' } });
   } catch (err) {
     next(err);
   }
@@ -316,15 +307,15 @@ export async function closeRegistration(req: AuthRequest, res: Response, next: N
   try {
     const gameId = param(req as Request, 'id');
     const game = await prisma.game.findUnique({ where: { id: gameId }, select: { status: true } });
-    if (!game) { res.status(404).json({ error: 'Game not found' }); return; }
+    if (!game) { res.status(404).json({ error: 'Juego no encontrado' }); return; }
     if (game.status !== 'LIVE') {
-      res.status(400).json({ error: 'Game must be LIVE to close registration', code: 'INVALID_STATUS' });
+      res.status(400).json({ error: 'El juego debe estar EN VIVO para cerrar el registro', code: 'INVALID_STATUS' });
       return;
     }
-    broadcastGameStart(io, gameId, false).catch((err) =>
-      console.error('[closeRegistration] broadcastGameStart error', err)
+    closeRegistrationOnly(io, gameId).catch((err) =>
+      console.error('[closeRegistration] closeRegistrationOnly error', err)
     );
-    res.json({ data: { message: 'Registration closed, questions starting' } });
+    res.json({ data: { message: 'Registro cerrado' } });
   } catch (err) {
     next(err);
   }
@@ -387,7 +378,7 @@ export async function getGameLog(req: Request, res: Response, next: NextFunction
         include: { user: { select: { id: true, username: true, name: true, email: true } } },
       }),
     ]);
-    if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
+    if (!game) throw new AppError('Juego no encontrado', 404, 'NOT_FOUND');
     const entries = rawEntries.map((e) => ({
       id: e.id,
       userId: e.userId,
@@ -410,7 +401,7 @@ export async function getGameLeaderboard(req: Request, res: Response, next: Next
   try {
     const gameId = param(req, 'id');
     const game = await prisma.game.findUnique({ where: { id: gameId } });
-    if (!game) throw new AppError('Game not found', 404, 'NOT_FOUND');
+    if (!game) throw new AppError('Juego no encontrado', 404, 'NOT_FOUND');
 
     const entries = await prisma.gameEntry.findMany({
       where: { gameId },

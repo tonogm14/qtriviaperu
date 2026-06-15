@@ -84,15 +84,17 @@ model Game {
   potPercent      Float          @default(100)        // % of pot → prize, only for POT_PERCENT
   sourceGameId    String?        // id of the recurring game this was spawned from
   createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   notified1h      Boolean        @default(false)
   notified5m      Boolean        @default(false)
   notifiedStart   Boolean        @default(false)
-  streamUrl       String?
-  muxStreamId     String?
-  muxStreamKey    String?
-  entries         GameEntry[]
-  questions       GameQuestion[]
-  events          GameEvent[]
+  streamUrl           String?
+  muxStreamId         String?
+  muxStreamKey        String?
+  warmUpQuestionId    String?        // optional warmup question (no eliminations)
+  entries             GameEntry[]
+  questions           GameQuestion[]
+  events              GameEvent[]
 }
 
 model GameEvent {
@@ -115,6 +117,7 @@ model Question {
   correctIndex Int
   category     String         @default("General")
   difficulty   Difficulty     @default(MEDIUM)
+  isArchived   Boolean        @default(false)
   createdAt    DateTime       @default(now())
   games        GameQuestion[]
 }

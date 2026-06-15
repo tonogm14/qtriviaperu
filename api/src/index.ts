@@ -93,7 +93,7 @@ app.use('/api/badwords', badwordsRoutes);
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 
 app.use((_req, res) => {
-  res.status(404).json({ error: 'Route not found', code: 'NOT_FOUND' });
+  res.status(404).json({ error: 'Ruta no encontrada', code: 'NOT_FOUND' });
 });
 
 // ─── Error Handler ────────────────────────────────────────────────────────────

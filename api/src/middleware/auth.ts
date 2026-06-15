@@ -17,7 +17,7 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
   const authHeader = req.headers.authorization;
 
   if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Authorization token required', code: 'MISSING_TOKEN' });
+    res.status(401).json({ error: 'Token de autorización requerido', code: 'MISSING_TOKEN' });
     return;
   }
 
@@ -34,17 +34,17 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
     };
     next();
   } catch (err) {
-    res.status(401).json({ error: 'Invalid or expired token', code: 'INVALID_TOKEN' });
+    res.status(401).json({ error: 'Token inválido o expirado', code: 'INVALID_TOKEN' });
   }
 }
 
 export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (!req.user) {
-    res.status(401).json({ error: 'Authentication required', code: 'UNAUTHENTICATED' });
+    res.status(401).json({ error: 'Autenticación requerida', code: 'UNAUTHENTICATED' });
     return;
   }
   if (req.user.role !== 'ADMIN') {
-    res.status(403).json({ error: 'Admin access required', code: 'FORBIDDEN' });
+    res.status(403).json({ error: 'Se requieren permisos de administrador', code: 'FORBIDDEN' });
     return;
   }
   next();
@@ -53,11 +53,11 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
 /** Blocks admin accounts — mobile-only endpoints */
 export function requireUser(req: AuthRequest, res: Response, next: NextFunction): void {
   if (!req.user) {
-    res.status(401).json({ error: 'Authentication required', code: 'UNAUTHENTICATED' });
+    res.status(401).json({ error: 'Autenticación requerida', code: 'UNAUTHENTICATED' });
     return;
   }
   if (req.user.role !== 'USER') {
-    res.status(403).json({ error: 'This endpoint is for player accounts only', code: 'FORBIDDEN' });
+    res.status(403).json({ error: 'Este endpoint es solo para cuentas de jugador', code: 'FORBIDDEN' });
     return;
   }
   next();
@@ -66,12 +66,12 @@ export function requireUser(req: AuthRequest, res: Response, next: NextFunction)
 /** Allows the resource owner or any admin */
 export function requireOwnerOrAdmin(req: AuthRequest, res: Response, next: NextFunction): void {
   if (!req.user) {
-    res.status(401).json({ error: 'Authentication required', code: 'UNAUTHENTICATED' });
+    res.status(401).json({ error: 'Autenticación requerida', code: 'UNAUTHENTICATED' });
     return;
   }
   const resourceId = req.params.id;
   if (req.user.role !== 'ADMIN' && req.user.id !== resourceId) {
-    res.status(403).json({ error: 'Access denied', code: 'FORBIDDEN' });
+    res.status(403).json({ error: 'Acceso denegado', code: 'FORBIDDEN' });
     return;
   }
   next();
@@ -84,16 +84,16 @@ export function requireOwnerOrAdmin(req: AuthRequest, res: Response, next: NextF
 export function requirePermission(perm: Permission) {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ error: 'Authentication required', code: 'UNAUTHENTICATED' });
+      res.status(401).json({ error: 'Autenticación requerida', code: 'UNAUTHENTICATED' });
       return;
     }
     if (req.user.role !== 'ADMIN') {
-      res.status(403).json({ error: 'Admin access required', code: 'FORBIDDEN' });
+      res.status(403).json({ error: 'Se requieren permisos de administrador', code: 'FORBIDDEN' });
       return;
     }
     if (!hasPermission(req.user.permissions, perm)) {
       res.status(403).json({
-        error: `Missing permission: ${perm}`,
+        error: `Permiso faltante: ${perm}`,
         code: 'MISSING_PERMISSION',
       });
       return;

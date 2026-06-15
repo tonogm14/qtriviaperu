@@ -146,13 +146,13 @@ async function tick(io: SocketServer) {
     }
   }
 
-  // ── Auto-finish LIVE games stuck for more than 1 hour ────────────────────────
-  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  // ── Auto-finish LIVE games stuck for more than 2 hours ───────────────────────
+  // Uses updatedAt (last status change) so manually-run games aren't killed mid-game.
+  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
   const stuckGames = await prisma.game.findMany({
     where: {
       status: 'LIVE',
-      // scheduledAt is the start time proxy — if started over an hour ago
-      scheduledAt: { lt: oneHourAgo },
+      updatedAt: { lt: twoHoursAgo },
     },
   });
 

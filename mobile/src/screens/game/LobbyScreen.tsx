@@ -126,7 +126,10 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
         // Update current game status (for chat unlock etc.)
         if (gameId) {
           const currentGame = games.find((g) => g.id === gameId);
-          if (currentGame) setGame((prev: any) => (prev?.status === currentGame.status ? prev : currentGame));
+          if (currentGame) {
+            setGame((prev: any) => (prev?.status === currentGame.status ? prev : currentGame));
+            setStreamUrl(currentGame.streamUrl || null);
+          }
         }
       } catch {}
     }, 30_000);
@@ -380,9 +383,24 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
         </LinearGradient>
       </Animated.View>
 
-      {/* ── JOIN SECTION (always visible, above locked pill) ────── */}
+      {/* ── JOIN SECTION ────────────────────────────────────────── */}
       <View style={[styles.joinSection, { bottom: 90 + (Platform.OS === 'android' ? insets.bottom : 0) }]}>
-        {isJoined ? (
+        {isJoined && game?.status === 'LIVE' ? (
+          // Suscrito + juego en vivo → entrar
+          <TouchableOpacity
+            style={styles.participarBtn}
+            activeOpacity={0.85}
+            onPress={() => navigation.replace('Live', { gameId: game.id, streamUrl: game.streamUrl || null })}
+          >
+            <View style={styles.participarLeft}>
+              <Text style={styles.participarText}>🔴 Entrar al juego</Text>
+            </View>
+            <View style={styles.participarBadge}>
+              <Text style={styles.participarBadgeText}>EN VIVO</Text>
+            </View>
+          </TouchableOpacity>
+        ) : isJoined ? (
+          // Ya suscrito, esperando
           <View style={[styles.participarBtn, styles.participarJoined]}>
             <View style={styles.participarLeft}>
               <Text style={[styles.participarText, { color: '#34D399' }]}>✓ Ya estás inscrito</Text>
@@ -393,33 +411,36 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
             </View>
           </View>
-        ) : game && (game.entryFee ?? 0) > 0 ? (
-          <TouchableOpacity
-            style={styles.participarBtn}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('VipPay', { gameId: game.id, entryFee: game.entryFee, game })}
-          >
-            <View style={styles.participarLeft}>
-              <Text style={styles.participarText}>Participar</Text>
-            </View>
-            <View style={styles.participarBadge}>
-              <Text style={styles.participarBadgeText}>S/{game.entryFee}</Text>
-            </View>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.participarBtn}
-            activeOpacity={0.85}
-            onPress={() => setShowJoinModal(true)}
-          >
-            <View style={styles.participarLeft}>
-              <Text style={styles.participarText}>Participar</Text>
-            </View>
-            <View style={styles.participarBadge}>
-              <Text style={styles.participarBadgeText}>GRATIS</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        ) : game && game.status !== 'LIVE' ? (
+          // No suscrito + registro abierto → mostrar participar
+          (game.entryFee ?? 0) > 0 ? (
+            <TouchableOpacity
+              style={styles.participarBtn}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('VipPay', { gameId: game.id, entryFee: game.entryFee, game })}
+            >
+              <View style={styles.participarLeft}>
+                <Text style={styles.participarText}>Participar</Text>
+              </View>
+              <View style={styles.participarBadge}>
+                <Text style={styles.participarBadgeText}>S/{game.entryFee}</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.participarBtn}
+              activeOpacity={0.85}
+              onPress={() => setShowJoinModal(true)}
+            >
+              <View style={styles.participarLeft}>
+                <Text style={styles.participarText}>Participar</Text>
+              </View>
+              <View style={styles.participarBadge}>
+                <Text style={styles.participarBadgeText}>GRATIS</Text>
+              </View>
+            </TouchableOpacity>
+          )
+        ) : null /* LIVE + no suscrito = solo espectador, sin botón */}
       </View>
 
       {/* ── CHAT (slides up when unlocked) ──────────────────────── */}
@@ -516,7 +537,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1,
+    zIndex: 2,
   },
 
   topBar: {

@@ -23,7 +23,7 @@ export async function createLiveStream(gameId: string): Promise<{
     playback_policy: ['public'],
     new_asset_settings: { playback_policy: ['public'] },
     reconnect_window: 60,
-    latency_mode: 'reduced',
+    latency_mode: 'low',
   });
 
   const playbackId = liveStream.playback_ids?.[0]?.id;

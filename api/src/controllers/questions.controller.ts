@@ -21,6 +21,7 @@ const listQuestionsSchema = z.object({
   category: z.string().optional(),
   difficulty: z.nativeEnum(Difficulty).optional(),
   search: z.string().optional(),
+  archived: z.coerce.boolean().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(500).default(20),
 });
@@ -28,13 +29,15 @@ const listQuestionsSchema = z.object({
 export async function listQuestions(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const query = listQuestionsSchema.parse(req.query);
-    const { page, limit, category, difficulty, search } = query;
+    const { page, limit, category, difficulty, search, archived } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.QuestionWhereInput = {};
     if (category) where.category = category;
     if (difficulty) where.difficulty = difficulty;
     if (search) where.text = { contains: search, mode: 'insensitive' };
+    // Default: only show active (non-archived) questions unless ?archived=true
+    where.isArchived = archived === true ? true : false;
 
     const [questions, total] = await prisma.$transaction([
       prisma.question.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
@@ -51,7 +54,7 @@ export async function getQuestion(req: Request, res: Response, next: NextFunctio
   try {
     const question = await prisma.question.findUnique({ where: { id: param(req, 'id') } });
     if (!question) {
-      res.status(404).json({ error: 'Question not found', code: 'NOT_FOUND' });
+      res.status(404).json({ error: 'Pregunta no encontrada', code: 'NOT_FOUND' });
       return;
     }
     res.json({ data: question });
@@ -72,7 +75,7 @@ export async function createQuestion(req: Request, res: Response, next: NextFunc
 
 export async function updateQuestion(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const body = questionSchema.partial().parse(req.body);
+    const body = questionSchema.partial().extend({ isArchived: z.boolean().optional() }).parse(req.body);
     const question = await prisma.question.update({
       where: { id: param(req, 'id') },
       data: body,
@@ -86,7 +89,7 @@ export async function updateQuestion(req: Request, res: Response, next: NextFunc
 export async function deleteQuestion(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     await prisma.question.delete({ where: { id: param(req, 'id') } });
-    res.json({ data: { message: 'Question deleted successfully' } });
+    res.json({ data: { message: 'Pregunta eliminada correctamente' } });
   } catch (err) {
     next(err);
   }

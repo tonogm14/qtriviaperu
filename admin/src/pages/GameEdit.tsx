@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Save, X, Plus, Trash2, Search, RefreshCw, Repeat2, Heart, Crown, Star, ChevronDown, ChevronUp, Radio, Copy, Tv2 } from 'lucide-react'
+import { Save, X, Plus, Trash2, Search, RefreshCw, Repeat2, Heart, Crown, Star, ChevronDown, ChevronUp, Radio, Copy, Tv2, GripVertical } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select, Textarea } from '../components/ui/Input'
@@ -194,8 +194,6 @@ export function GameEdit() {
   const createStream = useCreateStream()
   const deleteStream = useDeleteStream()
   const [copiedKey, setCopiedKey] = useState<'key' | 'rtmp' | 'url' | null>(null)
-  const [ytUrl, setYtUrl] = useState('')
-  const [ytKey, setYtKey] = useState('')
 
   const copyToClipboard = (text: string, field: 'key' | 'rtmp' | 'url') => {
     navigator.clipboard.writeText(text)
@@ -203,7 +201,8 @@ export function GameEdit() {
     setTimeout(() => setCopiedKey(null), 2000)
   }
 
-  const { data: questionsData, refetch: refetchBank, isLoading: bankLoading } = useQuestions({ limit: 300 })
+  const [showArchived, setShowArchived] = useState(false)
+  const { data: questionsData, refetch: refetchBank, isLoading: bankLoading } = useQuestions({ limit: 300, archived: showArchived || undefined })
   const bankRaw: any[] = (questionsData as any)?.data ?? []
   const bankQuestions: Question[] = bankRaw.map(normalizeQ)
 
@@ -232,6 +231,8 @@ export function GameEdit() {
   const [saveError, setSaveError] = useState('')
   const [savedOk, setSavedOk] = useState(false)
 
+  const [warmUpQuestionId, setWarmUpQuestionId] = useState<string | null>(null)
+  const [warmUpQuestion, setWarmUpQuestion] = useState<Question | null>(null)
   const [assignedQuestions, setAssignedQuestions] = useState<Question[]>([])
   const [qSearch, setQSearch] = useState('')
   const [qCategory, setQCategory] = useState('todas')
@@ -256,6 +257,11 @@ export function GameEdit() {
       })
       if (existing.questions && existing.questions.length > 0) {
         setAssignedQuestions(existing.questions.map((gq: any) => normalizeQ(gq.question ?? gq)))
+      }
+      if ((existing as any).warmUpQuestionId) {
+        setWarmUpQuestionId((existing as any).warmUpQuestionId)
+        const wq = bankRaw.find((q: any) => q.id === (existing as any).warmUpQuestionId)
+        if (wq) setWarmUpQuestion(normalizeQ(wq))
       }
       if (existing.winnerMode) setWinnerMode(existing.winnerMode as WinnerMode)
       if (existing.prizeSlots && Array.isArray(existing.prizeSlots)) {
@@ -283,6 +289,24 @@ export function GameEdit() {
   const removeQuestion = (id: string) => setAssignedQuestions(prev => prev.filter(q => q.id !== id))
   const addAll = () => setAssignedQuestions(prev => [...prev, ...availableQuestions.slice(0, form.questions - prev.length)])
 
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+
+  const handleDragStart = (i: number) => setDragIdx(i)
+  const handleDragOver = (e: React.DragEvent, i: number) => { e.preventDefault(); setDragOverIdx(i) }
+  const handleDrop = (i: number) => {
+    if (dragIdx === null || dragIdx === i) return
+    setAssignedQuestions(prev => {
+      const next = [...prev]
+      const [moved] = next.splice(dragIdx, 1)
+      next.splice(i, 0, moved)
+      return next
+    })
+    setDragIdx(null)
+    setDragOverIdx(null)
+  }
+  const handleDragEnd = () => { setDragIdx(null); setDragOverIdx(null) }
+
   const handleSave = async () => {
     setSaveError('')
     setSavedOk(false)
@@ -305,7 +329,8 @@ export function GameEdit() {
       prizeSlots: winnerMode === 'RANKED_SLOTS' ? prizeSlots : null,
       prizeMode,
       potPercent: prizeMode === 'POT_PERCENT' ? potPercent : 100,
-      streamUrl: form.streamUrl || null,
+      // streamUrl is managed exclusively by the stream panel — don't overwrite it here
+      warmUpQuestionId: warmUpQuestionId ?? null,
     }
     if (isRecurring) {
       payload.recurringTime = form.recurringTime
@@ -426,24 +451,27 @@ export function GameEdit() {
                 </Select>
                 <Input label="Host / Presentador" value={form.host} onChange={e => upd('host', e.target.value)} />
               </div>
-              {/* Stream YouTube — solo visible en juegos existentes */}
+              {/* Stream en vivo (Mux) — solo visible en juegos existentes */}
               {!isNew && (
                 <div style={{ border: '1px solid var(--ink-150)', borderRadius: 12, padding: 16, background: 'var(--ink-50)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                     <Tv2 size={15} style={{ color: 'var(--brand-500)' }} />
-                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink-800)' }}>Stream en vivo (YouTube)</span>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink-800)' }}>Stream en vivo (Mux)</span>
                     {streamData && (
                       <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: 999 }}>
-                        ● Configurado
+                        ● Activo
                       </span>
                     )}
                   </div>
 
                   {streamData ? (
                     <div style={{ display: 'grid', gap: 10 }}>
+                      <p style={{ fontSize: 12, color: 'var(--ink-500)', margin: 0 }}>
+                        Abre <strong>Larix Broadcaster</strong> en tu móvil y configura con estos datos:
+                      </p>
                       {/* RTMP server */}
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', marginBottom: 4, letterSpacing: 0.5 }}>SERVIDOR RTMP (Larix / OBS)</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', marginBottom: 4, letterSpacing: 0.5 }}>SERVIDOR RTMP</div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <input readOnly value={streamData.rtmpServer} className="input" style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', background: 'var(--ink-100)' }} />
                           <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, gap: 4, display: 'flex', alignItems: 'center', fontSize: 12 }}
@@ -454,7 +482,7 @@ export function GameEdit() {
                       </div>
                       {/* Stream Key */}
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', marginBottom: 4, letterSpacing: 0.5 }}>STREAM KEY (Larix / OBS)</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', marginBottom: 4, letterSpacing: 0.5 }}>STREAM KEY</div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <input readOnly value={streamData.streamKey ?? ''} className="input" style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', background: 'var(--ink-100)' }} />
                           <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, gap: 4, display: 'flex', alignItems: 'center', fontSize: 12 }}
@@ -463,73 +491,37 @@ export function GameEdit() {
                           </button>
                         </div>
                       </div>
-                      {/* YouTube URL */}
+                      {/* HLS playback URL */}
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', marginBottom: 4, letterSpacing: 0.5 }}>URL YOUTUBE (para espectadores)</div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', marginBottom: 4, letterSpacing: 0.5 }}>URL DE REPRODUCCIÓN (HLS — solo lectura)</div>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <input readOnly value={streamData.streamUrl ?? ''} className="input" style={{ flex: 1, fontSize: 12, fontFamily: 'monospace', background: 'var(--ink-100)' }} />
-                          <button type="button" className="btn btn-secondary" style={{ flexShrink: 0, gap: 4, display: 'flex', alignItems: 'center', fontSize: 12 }}
-                            onClick={() => copyToClipboard(streamData.streamUrl ?? '', 'url')}>
-                            <Copy size={12} />{copiedKey === 'url' ? '✓' : 'Copiar'}
-                          </button>
+                          <input readOnly
+                            value={streamData.streamUrl?.startsWith('/') ? `${window.location.origin.replace('5173','3002')}${streamData.streamUrl}` : (streamData.streamUrl ?? '')}
+                            className="input" style={{ flex: 1, fontSize: 11, fontFamily: 'monospace', background: 'var(--ink-100)' }} />
                         </div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 4 }}>La app móvil la usa automáticamente vía la API.</div>
                       </div>
                       <Button kind="ghost" size="sm"
                         onClick={async () => { await deleteStream.mutateAsync(id!); refetchStream() }}
                         disabled={deleteStream.isPending}>
-                        {deleteStream.isPending ? 'Eliminando…' : 'Quitar stream'}
+                        {deleteStream.isPending ? 'Eliminando…' : 'Eliminar stream'}
                       </Button>
                     </div>
                   ) : (
                     <div style={{ display: 'grid', gap: 10 }}>
                       <p style={{ fontSize: 12, color: 'var(--ink-500)', margin: 0 }}>
-                        Crea el stream en <strong>YouTube Studio</strong> y pega la URL del video y el stream key aquí.{' '}
-                        <a href="https://studio.youtube.com/channel/UC/livestreaming" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-600)', fontWeight: 600 }}>
-                          Ir a YouTube Studio →
-                        </a>
+                        Crea un stream en Mux con un clic. Luego abre <strong>Larix Broadcaster</strong> en tu móvil y pega el servidor RTMP y el stream key que aparecerán aquí.
                       </p>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', letterSpacing: 0.5 }}>URL DEL VIDEO YOUTUBE</div>
-                          <a href="https://www.youtube.com/live_dashboard" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--brand-600)', fontWeight: 600 }}>
-                            Ver mis streams →
-                          </a>
-                        </div>
-                        <input
-                          className="input"
-                          placeholder="https://www.youtube.com/watch?v=..."
-                          value={ytUrl}
-                          onChange={e => setYtUrl(e.target.value)}
-                          style={{ fontSize: 13 }}
-                        />
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-500)', letterSpacing: 0.5 }}>STREAM KEY (de YouTube Studio)</div>
-                          <a href="https://studio.youtube.com/channel/UC/livestreaming/dashboard" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'var(--brand-600)', fontWeight: 600 }}>
-                            Obtener stream key →
-                          </a>
-                        </div>
-                        <input
-                          className="input"
-                          placeholder="xxxx-xxxx-xxxx-xxxx-xxxx"
-                          value={ytKey}
-                          onChange={e => setYtKey(e.target.value)}
-                          style={{ fontSize: 13, fontFamily: 'monospace' }}
-                        />
-                      </div>
                       <Button
                         kind="primary"
                         icon={Radio}
                         onClick={async () => {
-                          await createStream.mutateAsync({ id: id!, streamUrl: ytUrl, streamKey: ytKey })
-                          setYtUrl('')
-                          setYtKey('')
+                          await createStream.mutateAsync(id!)
                           refetchStream()
                         }}
-                        disabled={createStream.isPending || !ytUrl.trim() || !ytKey.trim()}
+                        disabled={createStream.isPending}
                       >
-                        {createStream.isPending ? 'Guardando…' : 'Guardar stream'}
+                        {createStream.isPending ? 'Creando stream…' : 'Crear stream en Mux'}
                       </Button>
                     </div>
                   )}
@@ -753,6 +745,49 @@ export function GameEdit() {
             </div>
           </Card>
 
+          {/* Warmup question */}
+          <Card>
+            <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              🧪 Pregunta de prueba
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-400)', background: 'var(--ink-100)', padding: '2px 8px', borderRadius: 999 }}>
+                no elimina · solo feedback
+              </span>
+            </h3>
+            <p style={{ fontSize: 12, color: 'var(--ink-400)', margin: '0 0 12px' }}>
+              Se envía antes de las preguntas reales para verificar presencia. Los jugadores ven verde/rojo pero nadie es eliminado.
+            </p>
+            {warmUpQuestion ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--ink-50)', borderRadius: 10, border: '1.5px solid var(--brand-200, #ddd6fe)' }}>
+                <span style={{ fontSize: 18 }}>🧪</span>
+                <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--ink-800)' }}>{warmUpQuestion.text}</span>
+                <Badge tone={DIFF_TONE(warmUpQuestion.difficulty ?? 'media') as any}>{warmUpQuestion.difficulty}</Badge>
+                <button className="icon-btn" title="Quitar pregunta de prueba" onClick={() => { setWarmUpQuestionId(null); setWarmUpQuestion(null) }}>
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {bankQuestions.slice(0, 20).map(q => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => { setWarmUpQuestionId(q.id); setWarmUpQuestion(q) }}
+                    style={{
+                      padding: '6px 12px', borderRadius: 8, border: '1.5px solid var(--ink-200)',
+                      background: 'var(--ink-50)', cursor: 'pointer', fontSize: 12,
+                      color: 'var(--ink-700)', textAlign: 'left', maxWidth: 300,
+                    }}
+                  >
+                    {q.text.slice(0, 60)}{q.text.length > 60 ? '…' : ''}
+                  </button>
+                ))}
+                {bankQuestions.length === 0 && (
+                  <p style={{ fontSize: 12, color: 'var(--ink-400)', margin: 0 }}>Agrega preguntas al banco para poder seleccionar una de prueba.</p>
+                )}
+              </div>
+            )}
+          </Card>
+
           {/* Assigned questions */}
           <Card noPad>
             <CardHeader
@@ -769,7 +804,22 @@ export function GameEdit() {
                 <div className="empty-state"><p>Sin preguntas asignadas. Agrégalas desde el banco o crea una nueva.</p></div>
               )}
               {assignedQuestions.map((q, i) => (
-                <div key={q.id} className="assigned-question-row">
+                <div
+                  key={q.id}
+                  className="assigned-question-row"
+                  draggable
+                  onDragStart={() => handleDragStart(i)}
+                  onDragOver={(e) => handleDragOver(e, i)}
+                  onDrop={() => handleDrop(i)}
+                  onDragEnd={handleDragEnd}
+                  style={{
+                    opacity: dragIdx === i ? 0.4 : 1,
+                    borderTop: dragOverIdx === i && dragIdx !== i ? '2px solid var(--brand-500, #7C3AED)' : undefined,
+                    cursor: 'grab',
+                    transition: 'opacity 0.15s',
+                  }}
+                >
+                  <GripVertical size={13} style={{ color: 'var(--ink-300)', flexShrink: 0, cursor: 'grab' }} />
                   <span className="q-number">{String(i + 1).padStart(2, '0')}</span>
                   <span className="q-text">{q.text}</span>
                   <Badge tone={DIFF_TONE(q.difficulty ?? 'media') as any}>{q.difficulty}</Badge>
@@ -793,6 +843,19 @@ export function GameEdit() {
                   {bankQuestions.length} preguntas disponibles
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowArchived(v => !v)}
+                title={showArchived ? 'Ver activas' : 'Ver archivadas'}
+                style={{
+                  padding: '4px 10px', borderRadius: 8, border: '1.5px solid var(--ink-200)',
+                  background: showArchived ? 'var(--amber-50,#fffbeb)' : 'transparent',
+                  color: showArchived ? 'var(--amber-600,#d97706)' : 'var(--ink-400)',
+                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                {showArchived ? '📦 Archivadas' : '📦'}
+              </button>
               <Button kind="primary" size="sm" icon={Plus} onClick={() => setNewQOpen(true)}>Nueva</Button>
               <button className="icon-btn" onClick={() => setBankExpanded(v => !v)} title="Colapsar">
                 {bankExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

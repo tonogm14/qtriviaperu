@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 
 const SOCKET_URL =
   process.env.EXPO_PUBLIC_API_URL ??
-  (__DEV__ ? 'http://192.168.1.10:3001' : 'https://api.qtriviaperu.com');
+  (__DEV__ ? 'http://192.168.1.10:3002' : 'https://api.qtriviaperu.com');
 
 let socket: Socket | null = null;
 let _msgSeq = 0;

@@ -50,11 +50,14 @@ interface GameState {
 const activeGames = new Map<string, GameState>();
 const nextQuestionResolvers = new Map<string, () => void>();
 
-// Tracks games whose registration has been explicitly closed (questions loop started)
+// Tracks games whose registration has been explicitly closed
 const closedRegistrations = new Set<string>();
 export function isRegistrationClosed(gameId: string): boolean {
   return closedRegistrations.has(gameId);
 }
+
+// Tracks games where registration is closed but question loop hasn't started yet
+const pendingGameStart = new Set<string>();
 
 function getOrCreateGameState(gameId: string): GameState {
   if (!activeGames.has(gameId)) {
@@ -147,7 +150,7 @@ export function initGameSocket(io: SocketServer): void {
         });
 
         // Re-emit waiting state to admin so the "Siguiente pregunta" button reappears after reload
-        if (userId === 'admin' && nextQuestionResolvers.has(gameId)) {
+        if (userId === 'admin' && (nextQuestionResolvers.has(gameId) || pendingGameStart.has(gameId))) {
           socket.emit('game:waiting_next', { gameId });
         }
 
@@ -290,7 +293,16 @@ export function initGameSocket(io: SocketServer): void {
     });
 
     // ─── HOST: NEXT QUESTION (advances waiting game loop) ───────────────────
-    socket.on('host:next', ({ gameId }: { gameId: string }) => {
+    socket.on('host:next', async ({ gameId }: { gameId: string }) => {
+      // First press after closeRegistration: start the question loop
+      if (pendingGameStart.has(gameId)) {
+        pendingGameStart.delete(gameId);
+        startQuestionLoop(io, gameId).catch((err) =>
+          console.error('[Socket] startQuestionLoop error', err)
+        );
+        return;
+      }
+      // Subsequent presses: advance the running loop
       const resolve = nextQuestionResolvers.get(gameId);
       if (resolve) {
         nextQuestionResolvers.delete(gameId);
@@ -329,7 +341,17 @@ export function initGameSocket(io: SocketServer): void {
 /**
  * Start a game: emit lobby countdown then begin questions.
  */
-export async function broadcastGameStart(io: SocketServer, gameId: string, autoPlay = false): Promise<void> {
+/** Close registration only — does NOT start questions. Admin triggers first question manually. */
+export async function closeRegistrationOnly(io: SocketServer, gameId: string): Promise<void> {
+  closedRegistrations.add(gameId);
+  pendingGameStart.add(gameId);
+  io.to(`game:${gameId}`).emit('game:registration_closed', { gameId });
+  // Signal admin that the "Siguiente Pregunta" button should appear
+  io.to(`game:${gameId}`).emit('game:waiting_next', { gameId });
+}
+
+/** Start the question loop (countdown + questions). Registration must already be closed. */
+async function startQuestionLoop(io: SocketServer, gameId: string, autoPlay = false): Promise<void> {
   const game = await prisma.game.findUnique({
     where: { id: gameId },
     include: {
@@ -342,12 +364,14 @@ export async function broadcastGameStart(io: SocketServer, gameId: string, autoP
 
   if (!game) return;
 
+  let warmUpQuestion: { text: string; options: string[]; correctIndex: number } | null = null;
+  if (game.warmUpQuestionId) {
+    const wq = await prisma.question.findUnique({ where: { id: game.warmUpQuestionId } });
+    if (wq) warmUpQuestion = { text: wq.text, options: wq.options, correctIndex: wq.correctIndex };
+  }
+
   const state = getOrCreateGameState(gameId);
   state.currentQuestion = 0;
-
-  // Mark registration as closed and notify all connected clients
-  closedRegistrations.add(gameId);
-  io.to(`game:${gameId}`).emit('game:registration_closed', { gameId });
 
   // Countdown: 5 seconds
   for (let s = 5; s >= 1; s--) {
@@ -355,8 +379,14 @@ export async function broadcastGameStart(io: SocketServer, gameId: string, autoP
     await sleep(1000);
   }
 
-  // Send questions sequentially
-  await runGameQuestions(io, game, state, autoPlay);
+  await runGameQuestions(io, game, state, autoPlay, warmUpQuestion);
+}
+
+/** Legacy / autoPlay entry point: closes registration then immediately starts questions. */
+export async function broadcastGameStart(io: SocketServer, gameId: string, autoPlay = false): Promise<void> {
+  closedRegistrations.add(gameId);
+  io.to(`game:${gameId}`).emit('game:registration_closed', { gameId });
+  await startQuestionLoop(io, gameId, autoPlay);
 }
 
 async function runGameQuestions(
@@ -371,8 +401,45 @@ async function runGameQuestions(
   },
   state: GameState,
   autoPlay = false,
+  warmUpQuestion: { text: string; options: string[]; correctIndex: number } | null = null,
 ): Promise<void> {
   const { id: gameId, questions, timePerQuestion } = game;
+
+  // ── Warmup phase ────────────────────────────────────────────────────────────
+  if (warmUpQuestion) {
+    if (!autoPlay) await waitForHost(io, gameId);
+    state.currentQuestion = -1;
+
+    io.to(`game:${gameId}`).emit('game:question', {
+      gameId,
+      qIdx: -1,
+      question: warmUpQuestion.text,
+      options: warmUpQuestion.options,
+      isWarmup: true,
+    });
+
+    await sleep(timePerQuestion * 1000);
+
+    // Build answer counts from in-memory state for warmup (qIdx = -1)
+    const counts = [0, 0, 0, 0];
+    for (const [key, val] of state.answers.entries()) {
+      if (!key.endsWith(':-1')) continue;
+      counts[val.answerIndex] = (counts[val.answerIndex] ?? 0) + 1;
+    }
+
+    io.to(`game:${gameId}`).emit('game:reveal', {
+      gameId,
+      correctIndex: warmUpQuestion.correctIndex,
+      counts,
+      eliminated: [],
+      eliminatedDetails: [],
+      aliveDetails: [],
+      isWarmup: true,
+    });
+
+    // Brief pause before first real question
+    await sleep(autoPlay ? 3000 : 0);
+  }
 
   for (let i = 0; i < questions.length; i++) {
     // In manual mode wait for host before EVERY question (including the first)
@@ -547,6 +614,18 @@ async function endGame(io: SocketServer, gameId: string): Promise<void> {
     if (pending) { nextQuestionResolvers.delete(gameId); pending(); }
 
     const { winner, winners, prize } = await gameService.finishGame(gameId);
+
+    // Archive all questions used in this game
+    const usedQuestions = await prisma.gameQuestion.findMany({
+      where: { gameId },
+      select: { questionId: true },
+    });
+    if (usedQuestions.length > 0) {
+      await prisma.question.updateMany({
+        where: { id: { in: usedQuestions.map((q) => q.questionId) } },
+        data: { isArchived: true },
+      });
+    }
 
     io.to(`game:${gameId}`).emit('game:finish', {
       gameId,

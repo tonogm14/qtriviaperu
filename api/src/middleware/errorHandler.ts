@@ -14,7 +14,7 @@ export function errorHandler(
   // Zod validation errors
   if (err instanceof ZodError) {
     res.status(400).json({
-      error: 'Validation error',
+      error: 'Error de validación',
       code: 'VALIDATION_ERROR',
       details: err.errors.map((e) => ({
         field: e.path.join('.'),
@@ -29,7 +29,7 @@ export function errorHandler(
     if (err.code === 'P2002') {
       const fields = (err.meta?.target as string[]) ?? [];
       res.status(409).json({
-        error: `A record with this ${fields.join(', ')} already exists`,
+        error: `Ya existe un registro con este ${fields.join(', ')}`,
         code: 'DUPLICATE_RECORD',
       });
       return;
@@ -37,7 +37,7 @@ export function errorHandler(
 
     if (err.code === 'P2025') {
       res.status(404).json({
-        error: 'Record not found',
+        error: 'Registro no encontrado',
         code: 'NOT_FOUND',
       });
       return;
@@ -56,14 +56,14 @@ export function errorHandler(
   // Generic error
   if (err instanceof Error) {
     res.status(500).json({
-      error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+      error: process.env.NODE_ENV === 'production' ? 'Error interno del servidor' : err.message,
       code: 'INTERNAL_ERROR',
     });
     return;
   }
 
   res.status(500).json({
-    error: 'Internal server error',
+    error: 'Error interno del servidor',
     code: 'INTERNAL_ERROR',
   });
 }

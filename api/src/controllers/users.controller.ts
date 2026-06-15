@@ -115,7 +115,7 @@ export async function getUser(req: Request, res: Response, next: NextFunction): 
   try {
     const user = await prisma.user.findUnique({ where: { id: param(req, 'id') } });
     if (!user) {
-      res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
+      res.status(404).json({ error: 'Usuario no encontrado', code: 'NOT_FOUND' });
       return;
     }
     res.json({ data: sanitizeUser(user) });
@@ -180,7 +180,7 @@ export async function getUserStats(req: Request, res: Response, next: NextFuncti
 
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-      res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' });
+      res.status(404).json({ error: 'Usuario no encontrado', code: 'NOT_FOUND' });
       return;
     }
 

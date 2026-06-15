@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Plus, Trash2, Pencil, GripVertical, Search, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Pencil, GripVertical, Search, RefreshCw, RotateCcw } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button, IconButton } from '../components/ui/Button'
@@ -168,6 +168,7 @@ export function Questions() {
   const [difficulty, setDifficulty] = useState('todos')
   const [page, setPage] = useState(1)
   const [mutError, setMutError] = useState('')
+  const [showArchived, setShowArchived] = useState(false)
   const PER_PAGE = 10
 
   const dragIdx = useRef<number | null>(null)
@@ -179,6 +180,7 @@ export function Questions() {
   const queryParams = {
     search: search || undefined,
     difficulty: difficulty !== 'todos' ? (difficultyToApi[difficulty] ?? difficulty) : undefined,
+    archived: showArchived || undefined,
     page,
     limit: PER_PAGE,
   }
@@ -237,10 +239,19 @@ export function Questions() {
       <div className="page-head">
         <div>
           <h1 className="page-title">Preguntas</h1>
-          <p className="page-sub">{total} preguntas en el banco</p>
+          <p className="page-sub">{total} {showArchived ? 'preguntas archivadas' : 'preguntas activas en el banco'}</p>
         </div>
         <div className="page-actions">
-          <Button kind="primary" icon={Plus} onClick={() => setEditing('new')}>Nueva pregunta</Button>
+          <Button
+            kind={showArchived ? 'primary' : 'secondary'}
+            onClick={() => { setShowArchived(v => !v); setPage(1) }}
+            style={showArchived ? { background: '#d97706', borderColor: '#d97706' } : {}}
+          >
+            📦 {showArchived ? 'Ver activas' : 'Archivadas'}
+          </Button>
+          {!showArchived && (
+            <Button kind="primary" icon={Plus} onClick={() => setEditing('new')}>Nueva pregunta</Button>
+          )}
         </div>
       </div>
 
@@ -346,10 +357,23 @@ export function Questions() {
                   <td className="cell-muted">{q.createdAt?.slice(0, 10) ?? '—'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <IconButton onClick={() => setEditing(q)} title="Editar">
-                        <Pencil size={13} />
-                      </IconButton>
-<IconButton
+                      {showArchived ? (
+                        <IconButton
+                          title="Restaurar al banco activo"
+                          onClick={async () => {
+                            try { await updateQuestion.mutateAsync({ id: q.id, data: { isArchived: false } as any }) }
+                            catch {}
+                          }}
+                          style={{ color: '#16a34a', background: '#f0fdf4', borderColor: '#bbf7d0' }}
+                        >
+                          <RotateCcw size={13} />
+                        </IconButton>
+                      ) : (
+                        <IconButton onClick={() => setEditing(q)} title="Editar">
+                          <Pencil size={13} />
+                        </IconButton>
+                      )}
+                      <IconButton
                         title="Eliminar"
                         onClick={() => handleDelete(q.id)}
                       >
