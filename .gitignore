@@ -55,4 +55,4 @@ admin/node_modules/.vite/
 admin/.env
 
 mobile/.env
-*.env.example
+!*.env.example
