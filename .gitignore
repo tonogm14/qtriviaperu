@@ -53,3 +53,6 @@ api/.env
 # Vite cache
 admin/node_modules/.vite/
 admin/.env
+
+mobile/.env
+*.env.example
