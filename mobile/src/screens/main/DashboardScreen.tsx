@@ -131,33 +131,31 @@ function FreeGameCard({
         <Text style={fgStyles.timeText}>{scheduledTime}</Text>
       </View>
 
-      {/* prize amount */}
-      <View style={fgStyles.prizeSection}>
-        <Text style={fgStyles.prizeLabel}>PREMIO</Text>
-        <Animated.View style={prizeStyle}>
-          <Text style={fgStyles.prizeAmount}>
-            <Text style={fgStyles.prizeCurrency}>S/</Text>
-            {prize.toLocaleString()}
-          </Text>
-        </Animated.View>
-      </View>
-
-      {/* prize details */}
-      {(game.prizeTitle || game.prizeDescription || game.prizeImage) && (
+      {/* prize — monetary or physical */}
+      {game.prizeType === 'PHYSICAL' ? (
         <View style={fgStyles.prizeDetails}>
           {game.prizeImage && (
             <Image
               source={{ uri: `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${game.prizeImage}` }}
-              style={fgStyles.prizeDetailImg}
+              style={fgStyles.prizeDetailImgLarge}
               resizeMode="cover"
             />
           )}
-          {game.prizeTitle && (
-            <Text style={fgStyles.prizeDetailTitle}>{game.prizeTitle}</Text>
-          )}
-          {game.prizeDescription && (
-            <Text style={fgStyles.prizeDetailDesc}>{game.prizeDescription}</Text>
-          )}
+          <View style={{ flex: 1 }}>
+            <Text style={fgStyles.prizeLabel}>PREMIO</Text>
+            {game.prizeTitle && <Text style={fgStyles.prizeDetailTitle}>{game.prizeTitle}</Text>}
+            {game.prizeDescription && <Text style={fgStyles.prizeDetailDesc}>{game.prizeDescription}</Text>}
+          </View>
+        </View>
+      ) : (
+        <View style={fgStyles.prizeSection}>
+          <Text style={fgStyles.prizeLabel}>PREMIO</Text>
+          <Animated.View style={prizeStyle}>
+            <Text style={fgStyles.prizeAmount}>
+              <Text style={fgStyles.prizeCurrency}>S/</Text>
+              {prize.toLocaleString()}
+            </Text>
+          </Animated.View>
         </View>
       )}
 
@@ -359,6 +357,7 @@ const fgStyles = StyleSheet.create({
     padding: 10, marginTop: 4, marginBottom: 4,
   },
   prizeDetailImg: { width: 52, height: 52, borderRadius: 10, flexShrink: 0 },
+  prizeDetailImgLarge: { width: 72, height: 72, borderRadius: 14, flexShrink: 0 },
   prizeDetailTitle: { color: 'white', fontWeight: '700', fontSize: 13, marginBottom: 2 },
   prizeDetailDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 17 },
 });
@@ -620,39 +619,36 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </View>
 
-          <View style={styles.boteSection}>
-            <Text style={styles.boteLabel}>
-              {vipGame?.prizeMode === 'FIXED' ? 'PREMIO FIJO' : 'BOTE A REPARTIR'}
-            </Text>
-            <View>
-              <Text style={styles.boteAmount}>
-                <Text style={styles.boteCurrency}>S/</Text>
-                {vipDisplayPrize.toLocaleString()}
-              </Text>
-            </View>
-            {vipGame?.prizeMode === 'POT' && (
-              <View style={styles.boteIncr}>
-                <View style={styles.boteIncrDot} />
-                <Text style={styles.boteIncrText}>Premio acumulado del evento</Text>
-              </View>
-            )}
-          </View>
-
-          {/* prize details */}
-          {(vipGame?.prizeTitle || vipGame?.prizeDescription || vipGame?.prizeImage) && (
+          {/* prize — monetary or physical */}
+          {vipGame?.prizeType === 'PHYSICAL' ? (
             <View style={styles.prizeDetails}>
               {vipGame?.prizeImage && (
                 <Image
                   source={{ uri: `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${vipGame.prizeImage}` }}
-                  style={styles.prizeDetailImg}
+                  style={styles.prizeDetailImgLarge}
                   resizeMode="cover"
                 />
               )}
-              {vipGame?.prizeTitle && (
-                <Text style={styles.prizeDetailTitle}>{vipGame.prizeTitle}</Text>
-              )}
-              {vipGame?.prizeDescription && (
-                <Text style={styles.prizeDetailDesc}>{vipGame.prizeDescription}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.boteLabel}>PREMIO</Text>
+                {vipGame?.prizeTitle && <Text style={styles.prizeDetailTitle}>{vipGame.prizeTitle}</Text>}
+                {vipGame?.prizeDescription && <Text style={styles.prizeDetailDesc}>{vipGame.prizeDescription}</Text>}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.boteSection}>
+              <Text style={styles.boteLabel}>
+                {vipGame?.prizeMode === 'FIXED' ? 'PREMIO FIJO' : 'BOTE A REPARTIR'}
+              </Text>
+              <Text style={styles.boteAmount}>
+                <Text style={styles.boteCurrency}>S/</Text>
+                {vipDisplayPrize.toLocaleString()}
+              </Text>
+              {vipGame?.prizeMode === 'POT' && (
+                <View style={styles.boteIncr}>
+                  <View style={styles.boteIncrDot} />
+                  <Text style={styles.boteIncrText}>Premio acumulado del evento</Text>
+                </View>
               )}
             </View>
           )}
@@ -1211,6 +1207,7 @@ const styles = StyleSheet.create({
     padding: 10, marginTop: 4, marginBottom: 4,
   },
   prizeDetailImg: { width: 52, height: 52, borderRadius: 10, flexShrink: 0 },
+  prizeDetailImgLarge: { width: 72, height: 72, borderRadius: 14, flexShrink: 0 },
   prizeDetailTitle: { color: 'white', fontWeight: '700', fontSize: 13, marginBottom: 2 },
   prizeDetailDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 17 },
 });

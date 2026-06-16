@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Game" ADD COLUMN "prizeType" TEXT NOT NULL DEFAULT 'MONETARY';

@@ -231,6 +231,7 @@ export function GameEdit() {
   const [saveError, setSaveError] = useState('')
   const [savedOk, setSavedOk] = useState(false)
 
+  const [prizeType, setPrizeType] = useState<'MONETARY' | 'PHYSICAL'>('MONETARY')
   const [prizeTitle, setPrizeTitle] = useState('')
   const [prizeDescription, setPrizeDescription] = useState('')
   const [prizeImage, setPrizeImage] = useState<string | null>(null)
@@ -275,6 +276,7 @@ export function GameEdit() {
       }
       if (existing.prizeMode) setPrizeMode(existing.prizeMode as 'FIXED' | 'POT' | 'POT_PERCENT')
       if (existing.potPercent != null) setPotPercent(existing.potPercent)
+      if ((existing as any).prizeType) setPrizeType((existing as any).prizeType)
       if ((existing as any).prizeTitle) setPrizeTitle((existing as any).prizeTitle)
       if ((existing as any).prizeDescription) setPrizeDescription((existing as any).prizeDescription)
       if ((existing as any).prizeImage) setPrizeImage((existing as any).prizeImage)
@@ -340,8 +342,9 @@ export function GameEdit() {
       potPercent: prizeMode === 'POT_PERCENT' ? potPercent : 100,
       // streamUrl is managed exclusively by the stream panel — don't overwrite it here
       warmUpQuestionId: warmUpQuestionId ?? null,
-      prizeTitle: prizeTitle.trim() || null,
-      prizeDescription: prizeDescription.trim() || null,
+      prizeType,
+      prizeTitle: prizeType === 'PHYSICAL' ? (prizeTitle.trim() || null) : null,
+      prizeDescription: prizeType === 'PHYSICAL' ? (prizeDescription.trim() || null) : null,
     }
     if (isRecurring) {
       payload.recurringTime = form.recurringTime
@@ -591,8 +594,86 @@ export function GameEdit() {
             <h3 className="section-title">Premio y ganadores</h3>
             <div style={{ display: 'grid', gap: 16 }}>
 
-              {/* ── Fuente del premio ── */}
+              {/* ── Tipo de premio ── */}
               <div>
+                <label className="input-label" style={{ marginBottom: 8, display: 'block' }}>Tipo de premio</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {([
+                    { value: 'MONETARY' as const, icon: '💰', label: 'Monetario', desc: 'Efectivo o depósito (S/)' },
+                    { value: 'PHYSICAL' as const, icon: '🎁', label: 'Premio físico', desc: 'Objeto, producto o experiencia' },
+                  ]).map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPrizeType(opt.value)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                        border: `2px solid ${prizeType === opt.value ? 'var(--brand-500,#7C3AED)' : 'var(--ink-200)'}`,
+                        background: prizeType === opt.value ? 'var(--brand-50,#f5f3ff)' : 'transparent',
+                      }}
+                    >
+                      <span style={{ fontSize: 22 }}>{opt.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--ink-800)' }}>{opt.label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-500)', marginTop: 2 }}>{opt.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Premio físico: detalle ── */}
+              {prizeType === 'PHYSICAL' && (
+                <div style={{ display: 'grid', gap: 12, padding: 14, borderRadius: 12, background: 'var(--brand-50,#f5f3ff)', border: '1.5px solid var(--brand-200,#ddd6fe)' }}>
+                  <Input
+                    label="Título del premio *"
+                    placeholder='Ej: "iPhone 16 Pro 128 GB"'
+                    value={prizeTitle}
+                    onChange={e => setPrizeTitle(e.target.value)}
+                  />
+                  <Textarea
+                    label="Descripción"
+                    placeholder='Ej: "Color Titanio Natural, desbloqueado, incluye cargador…"'
+                    value={prizeDescription}
+                    onChange={e => setPrizeDescription(e.target.value)}
+                    rows={3}
+                  />
+                  <div>
+                    <label className="input-label" style={{ display: 'block', marginBottom: 8 }}>Imagen del premio</label>
+                    {(prizeImage || prizeImageFile) && (
+                      <div style={{ position: 'relative', display: 'inline-block', marginBottom: 10 }}>
+                        <img
+                          src={prizeImageFile ? URL.createObjectURL(prizeImageFile) : `${(import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3002'}${prizeImage}`}
+                          alt="Premio"
+                          style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: '1.5px solid var(--ink-200)' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { setPrizeImage(null); setPrizeImageFile(null) }}
+                          style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%', background: '#EF4444', border: 'none', color: 'white', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >×</button>
+                      </div>
+                    )}
+                    <label style={{ display: 'inline-block', cursor: 'pointer' }}>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        style={{ display: 'none' }}
+                        onChange={e => { const file = e.target.files?.[0]; if (file) setPrizeImageFile(file) }}
+                      />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px dashed var(--ink-300)', fontSize: 13, color: 'var(--ink-600)', cursor: 'pointer' }}>
+                        📷 {prizeImageFile ? prizeImageFile.name : 'Seleccionar imagen'}
+                      </span>
+                    </label>
+                    <p style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 6 }}>JPEG, PNG, WebP o GIF · máx. 5 MB · Se sube al guardar</p>
+                    {prizeImageUploading && <p style={{ fontSize: 12, color: 'var(--brand-500)', marginTop: 6 }}>⏳ Subiendo imagen…</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Fuente del premio (solo monetario) ── */}
+              {prizeType === 'MONETARY' && <div>
                 <label className="input-label" style={{ marginBottom: 8, display: 'block' }}>Fuente del premio</label>
                 <div style={{ display: 'grid', gap: 8 }}>
                   {([
@@ -645,7 +726,7 @@ export function GameEdit() {
                     <Input label="Premio fijo (S/)" type="number" value={form.prize} onChange={e => upd('prize', Number(e.target.value))} />
                   </div>
                 )}
-              </div>
+              </div>}
 
               <div>
                 <label className="input-label" style={{ marginBottom: 8, display: 'block' }}>Tipo de ganadores</label>
@@ -769,62 +850,6 @@ export function GameEdit() {
                   })()}
                 </div>
               )}
-            </div>
-          </Card>
-
-          {/* Prize details */}
-          <Card>
-            <h3 className="section-title">🎁 Detalle del premio <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--ink-400)', background: 'var(--ink-100)', padding: '2px 8px', borderRadius: 999, marginLeft: 4 }}>opcional</span></h3>
-            <p style={{ fontSize: 12, color: 'var(--ink-400)', margin: '0 0 16px' }}>
-              Si hay imagen, título o descripción del premio, aparecen en la app para los jugadores.
-            </p>
-            <div style={{ display: 'grid', gap: 14 }}>
-              <Input
-                label="Título del premio"
-                placeholder='Ej: "iPhone 16 Pro 128 GB"'
-                value={prizeTitle}
-                onChange={e => setPrizeTitle(e.target.value)}
-              />
-              <Textarea
-                label="Descripción del premio"
-                placeholder='Ej: "Color Titanio Natural, desbloqueado, incluye cargador…"'
-                value={prizeDescription}
-                onChange={e => setPrizeDescription(e.target.value)}
-                rows={3}
-              />
-              <div>
-                <label className="input-label" style={{ display: 'block', marginBottom: 8 }}>Imagen del premio</label>
-                {(prizeImage || prizeImageFile) && (
-                  <div style={{ position: 'relative', display: 'inline-block', marginBottom: 10 }}>
-                    <img
-                      src={prizeImageFile ? URL.createObjectURL(prizeImageFile) : `${(import.meta as any).env?.VITE_API_URL ?? 'http://localhost:3002'}${prizeImage}`}
-                      alt="Premio"
-                      style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: 12, border: '1.5px solid var(--ink-200)' }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setPrizeImage(null); setPrizeImageFile(null) }}
-                      style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: '50%', background: '#EF4444', border: 'none', color: 'white', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >×</button>
-                  </div>
-                )}
-                <label style={{ display: 'inline-block', cursor: 'pointer' }}>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    style={{ display: 'none' }}
-                    onChange={e => {
-                      const file = e.target.files?.[0]
-                      if (file) setPrizeImageFile(file)
-                    }}
-                  />
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1.5px dashed var(--ink-300)', fontSize: 13, color: 'var(--ink-600)', cursor: 'pointer' }}>
-                    📷 {prizeImageFile ? prizeImageFile.name : 'Seleccionar imagen'}
-                  </span>
-                </label>
-                <p style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 6 }}>JPEG, PNG, WebP o GIF · máx. 5 MB · Se sube al guardar el juego</p>
-                {prizeImageUploading && <p style={{ fontSize: 12, color: 'var(--brand-500)', marginTop: 6 }}>⏳ Subiendo imagen…</p>}
-              </div>
             </div>
           </Card>
 

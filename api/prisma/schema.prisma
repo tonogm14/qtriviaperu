@@ -93,6 +93,7 @@ model Game {
   muxStreamId         String?
   muxStreamKey        String?
   warmUpQuestionId    String?        // optional warmup question (no eliminations)
+  prizeType           String         @default("MONETARY") // MONETARY | PHYSICAL
   prizeImage          String?        // URL to uploaded prize image
   prizeTitle          String?        // short prize title (e.g. "iPhone 16 Pro")
   prizeDescription    String?        // longer prize description

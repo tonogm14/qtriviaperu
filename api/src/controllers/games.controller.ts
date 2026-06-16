@@ -91,6 +91,7 @@ const createGameSchema = z.object({
   potPercent: z.number().min(1).max(100).default(100),
   streamUrl: z.string().url().optional().nullable(),
   warmUpQuestionId: z.string().optional().nullable(),
+  prizeType: z.enum(['MONETARY', 'PHYSICAL']).default('MONETARY'),
   prizeTitle: z.string().max(200).optional().nullable(),
   prizeDescription: z.string().max(1000).optional().nullable(),
 });
@@ -113,6 +114,7 @@ const updateGameSchema = z.object({
   potPercent: z.number().min(1).max(100).optional(),
   streamUrl: z.string().url().optional().nullable(),
   warmUpQuestionId: z.string().optional().nullable(),
+  prizeType: z.enum(['MONETARY', 'PHYSICAL']).optional(),
   prizeTitle: z.string().max(200).optional().nullable(),
   prizeDescription: z.string().max(1000).optional().nullable(),
 });

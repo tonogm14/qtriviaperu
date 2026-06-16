@@ -136,30 +136,26 @@ export const JoinGameModal: React.FC<Props> = ({
             {/* Title */}
             <Text style={styles.gameTitle}>{game?.title || 'Trivia Gratis'}</Text>
 
-            {/* Prize */}
-            <View style={styles.prizeRow}>
-              <Text style={styles.prizeLabel}>PREMIO</Text>
-              <Text style={styles.prizeAmount}>S/{prize.toLocaleString()}</Text>
-            </View>
-
-            {/* Prize details */}
-            {(game?.prizeTitle || game?.prizeDescription || game?.prizeImage) && (
+            {/* Prize — monetary or physical */}
+            {game?.prizeType === 'PHYSICAL' ? (
               <View style={styles.prizeDetails}>
                 {game?.prizeImage && (
                   <Image
                     source={{ uri: `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${game.prizeImage}` }}
-                    style={styles.prizeDetailImg}
+                    style={styles.prizeDetailImgLarge}
                     resizeMode="cover"
                   />
                 )}
                 <View style={{ flex: 1 }}>
-                  {game?.prizeTitle && (
-                    <Text style={styles.prizeDetailTitle}>{game.prizeTitle}</Text>
-                  )}
-                  {game?.prizeDescription && (
-                    <Text style={styles.prizeDetailDesc}>{game.prizeDescription}</Text>
-                  )}
+                  <Text style={styles.prizeLabel}>PREMIO</Text>
+                  {game?.prizeTitle && <Text style={styles.prizeDetailTitle}>{game.prizeTitle}</Text>}
+                  {game?.prizeDescription && <Text style={styles.prizeDetailDesc}>{game.prizeDescription}</Text>}
                 </View>
+              </View>
+            ) : (
+              <View style={styles.prizeRow}>
+                <Text style={styles.prizeLabel}>PREMIO</Text>
+                <Text style={styles.prizeAmount}>S/{prize.toLocaleString()}</Text>
               </View>
             )}
 
@@ -442,6 +438,7 @@ const styles = StyleSheet.create({
     padding: 10, marginBottom: 10,
   },
   prizeDetailImg: { width: 52, height: 52, borderRadius: 10, flexShrink: 0 },
+  prizeDetailImgLarge: { width: 72, height: 72, borderRadius: 14, flexShrink: 0 },
   prizeDetailTitle: { color: 'white', fontWeight: '700', fontSize: 13, marginBottom: 2 },
   prizeDetailDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 17 },
 });
