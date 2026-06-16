@@ -37,11 +37,18 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const login = useStore((s) => s.login);
   const loginWithGoogle = useStore((s) => s.loginWithGoogle);
 
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
+  const googleClientId = Platform.OS === 'ios'
+    ? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+    : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  const googleConfigured = !!googleClientId && !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest(
+    googleConfigured ? {
+      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    } : null
+  );
 
   useEffect(() => {
     if (googleResponse?.type === 'success') {
@@ -176,10 +183,10 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
             {/* Social buttons */}
             <View style={styles.socialRow}>
               <TouchableOpacity
-                style={[styles.socialBtnLight, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
+                style={[styles.socialBtnLight, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, !googleConfigured && { opacity: 0.4 }]}
                 activeOpacity={0.8}
-                onPress={() => promptGoogleAsync()}
-                disabled={googleLoading}
+                onPress={() => googleConfigured && promptGoogleAsync()}
+                disabled={googleLoading || !googleConfigured}
               >
                 {googleLoading ? (
                   <ActivityIndicator color="#1F0A2E" size="small" />
