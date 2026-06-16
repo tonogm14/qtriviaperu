@@ -37,18 +37,18 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const login = useStore((s) => s.login);
   const loginWithGoogle = useStore((s) => s.loginWithGoogle);
 
-  const googleClientId = Platform.OS === 'ios'
-    ? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
-    : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-  const googleConfigured = !!googleClientId && !!process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest(
-    googleConfigured ? {
-      androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-      iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    } : null
+  const googleConfigured = !!(
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID &&
+    (Platform.OS === 'ios'
+      ? process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID
+      : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID)
   );
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
 
   useEffect(() => {
     if (googleResponse?.type === 'success') {
