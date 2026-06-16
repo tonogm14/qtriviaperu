@@ -267,8 +267,8 @@ export async function finishGame(gameId: string): Promise<{
 
   const winnerList = winners.map(w => ({ username: w.entry.user.username, prize: w.prize }));
 
-  // Auto-create next occurrence for recurring games — isolated so a failure never affects prize distribution
-  if (game.isRecurring && game.recurringTime) {
+  // Auto-create next occurrence only for FREE recurring games
+  if (game.isRecurring && game.recurringTime && game.type === 'FREE') {
     const gameQuestions = await prisma.gameQuestion.findMany({
       where: { gameId },
       select: { questionId: true, order: true },
@@ -331,7 +331,7 @@ export async function cancelStuckLobby(gameId: string): Promise<void> {
 
   console.log(`[cancelStuckLobby] cancelled stuck LOBBY game → ${game.title} (${gameId})`);
 
-  if (!game.isRecurring || !game.recurringTime) return;
+  if (!game.isRecurring || !game.recurringTime || game.type !== 'FREE') return;
 
   try {
     const alreadyExists = await prisma.game.findFirst({

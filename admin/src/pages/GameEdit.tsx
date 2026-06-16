@@ -206,8 +206,8 @@ export function GameEdit() {
   const bankRaw: any[] = (questionsData as any)?.data ?? []
   const bankQuestions: Question[] = bankRaw.map(normalizeQ)
 
-  const isRecurring = existing?.isRecurring ?? false
   const gameType: GameType = existing?.type ?? 'SPECIAL'
+  const isRecurring = gameType === 'FREE'
 
   const [form, setForm] = useState({
     title: '',

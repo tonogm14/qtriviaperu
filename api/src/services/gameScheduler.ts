@@ -128,6 +128,7 @@ async function tick(io: SocketServer) {
   const dueGames = await prisma.game.findMany({
     where: {
       isRecurring: true,
+      type: 'FREE',
       status: 'PENDING',
       scheduledAt: { lt: now },
     },

@@ -198,11 +198,14 @@ export async function createGame(req: Request, res: Response, next: NextFunction
     const body = createGameSchema.parse(req.body);
     const { prizeSlots, ...rest } = body;
     const scheduledAt = rest.scheduledAt ?? new Date();
+    // Only FREE games are recurring — all other types are one-off manual events
+    const isRecurring = rest.type === GameType.FREE;
     const game = await prisma.game.create({
       data: {
         ...rest,
         scheduledAt,
         type: rest.type,
+        isRecurring,
         prizeSlots: prizeSlots !== undefined ? (prizeSlots ?? Prisma.JsonNull) : undefined,
       },
     });
@@ -221,9 +224,12 @@ export async function updateGame(req: Request, res: Response, next: NextFunction
       ...(prizeSlots !== undefined ? { prizeSlots: prizeSlots ?? Prisma.JsonNull } : {}),
     };
 
-    // For recurring games updating time: recompute scheduledAt only if not explicitly provided
+    // Only FREE games are recurring — lock isRecurring to the type when type is being updated
+    if (body.type !== undefined) {
+      data.isRecurring = body.type === GameType.FREE;
+    }
+    // For FREE recurring games updating time: recompute scheduledAt
     if (body.recurringTime) {
-      data.isRecurring = true;
       if (!body.scheduledAt) {
         data.scheduledAt = getNextOccurrenceUTC(body.recurringTime);
       }
