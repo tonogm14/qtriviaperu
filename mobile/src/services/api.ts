@@ -87,41 +87,17 @@ export const notificationsApi = {
     api.put('/api/notifications/read-all'),
 };
 
-// Shop
-export const shopApi = {
-  listProducts: () =>
-    api.get<{ data: { packs: any[]; merch: any[] } }>('/api/shop/products'),
-  buyLives: (pack: string, method: 'yape' | 'plin' | 'card', quantity: number) =>
-    api.post('/api/shop/buy-lives', { pack, method, quantity }),
-  orderMerch: (itemId: string, method: 'yape' | 'plin' | 'card', quantity: number) =>
-    api.post('/api/shop/order-merch', { itemId, method, quantity }),
-  cartCheckout: (data: {
-    items: { itemId: string; quantity: number }[];
-    method: 'yape' | 'plin' | 'card';
-    recipientName: string;
-    dni: string;
-    phone: string;
-    address: string;
-    notes?: string;
-  }) => api.post<{ data: { cartRef: string; orders: number } }>('/api/shop/cart-checkout', data),
-  myOrders: () => api.get<{ data: { merch: any[]; lives: any[]; vip: any[] } }>('/api/shop/my-orders'),
-};
-
-// Withdrawals
-export const withdrawalsApi = {
+// Prizes — history of prizes delivered to the user (maps to withdrawals on the backend)
+export const prizesApi = {
   list: () =>
-    api.get('/api/withdrawals'),
-  create: (data: { amount: number; method: string; accountRef: string }) =>
-    api.post('/api/withdrawals', data),
+    api.get<{ data: any[] }>('/api/withdrawals'),
 };
 
-// Config — public legal content + user-facing settings
+// Config — public legal content
 export const configApi = {
   getTerms: () =>
     api.get<{ data: { termsAndConditions: string } }>('/api/config/terms'),
   getPrivacy: () =>
     api.get<{ data: { privacyPolicy: string } }>('/api/config/privacy'),
-  getWithdrawConfig: () =>
-    api.get<{ data: { minWithdraw: number; feeYape: number; feePlin: number; feeBCP: number; feeInterbank: number } }>('/api/config/withdraw-config'),
 };
 

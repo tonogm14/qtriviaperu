@@ -35,7 +35,6 @@ import {
   joinLobby,
   sendChat,
   submitAnswer,
-  useLife,
   onQuestion,
   onReveal,
   onGameFinish,
@@ -43,7 +42,6 @@ import {
   onLobbyState,
   onLobbyUpdate,
   onChat,
-  onLifeResult,
   onRegistrationClosed,
   offAll,
   newMsgId,
@@ -61,7 +59,7 @@ const EASE = Easing.out(Easing.cubic);
 
 export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
-  const { user, chatMessages, addChatMessage, setGameState, lives } = useStore();
+  const { user, chatMessages, addChatMessage, setGameState } = useStore();
   const gameId: string = route?.params?.gameId || 'default';
   const streamUrl: string | null = route?.params?.streamUrl || null;
 
@@ -245,22 +243,9 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
         if (wasEliminated) {
           setIsEliminated(true);
           setShowEliminatedModal(true);
-          // No lives → auto-dismiss modal after 2s (badge stays)
-          if (useStore.getState().lives <= 0) {
-            setTimeout(() => setShowEliminatedModal(false), 2000);
-          }
+          setTimeout(() => setShowEliminatedModal(false), 2000);
         }
       }, 2000);
-    });
-
-    onLifeResult((data) => {
-      if (data.success) {
-        setIsEliminated(false);
-        setShowEliminatedModal(false);
-        if (data.livesLeft !== undefined) {
-          useStore.setState({ lives: data.livesLeft });
-        }
-      }
     });
 
     onWaitingNext(() => {
@@ -318,12 +303,7 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
     setShowChatInput(false);
   };
 
-  const handleUseLife = () => {
-    if (!user?.id || lives <= 0) return;
-    useLife(gameId, user.id);
-  };
-
-  const getAnswerBg = (idx: number): string => {
+const getAnswerBg = (idx: number): string => {
     const correct = revealCorrect ?? currentQuestion?.correct ?? -1;
     if (phase === 'answering') return idx === selectedAnswer ? '#A855F7' : '#F4F4F5';
     if (idx === correct) return '#34D399';
@@ -469,26 +449,7 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
           <View style={styles.eliminatedModal}>
             <Text style={styles.eliminatedEmoji}>💀</Text>
             <Text style={styles.eliminatedTitle}>FUISTE ELIMINADO</Text>
-            <Text style={styles.eliminatedSub}>
-              {lives > 0
-                ? `Tienes ${lives} vida${lives === 1 ? '' : 's'} disponible${lives === 1 ? '' : 's'}`
-                : 'No tienes vidas disponibles'}
-            </Text>
-            {lives > 0 && (
-              <TouchableOpacity style={styles.lifeBtn} onPress={handleUseLife} activeOpacity={0.85}>
-                <LinearGradient
-                  colors={['#EC4899', '#A855F7']}
-                  style={styles.lifeBtnGrad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.lifeBtnText}>💖 Usar Vida</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-            <Text style={styles.eliminatedHint}>
-              {lives > 0 ? 'O espera la próxima pregunta para continuar como espectador' : 'Puedes seguir viendo como espectador'}
-            </Text>
+            <Text style={styles.eliminatedHint}>Puedes seguir viendo como espectador</Text>
           </View>
         </View>
       )}
@@ -550,9 +511,9 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
             <TouchableOpacity
               style={styles.joinBtn}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate('VipPay', { gameId, entryFee: gameData.entryFee, game: gameData })}
+              onPress={() => navigation.navigate('EventCode', { gameId, game: gameData })}
             >
-              <Text style={styles.joinBtnText}>Participar · S/{gameData?.entryFee}</Text>
+              <Text style={styles.joinBtnText}>Ver Detalles del Evento</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -637,7 +598,6 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
       <JoinGameModal
         visible={showJoinModal}
         game={gameData}
-        userLives={lives}
         onClose={() => setShowJoinModal(false)}
         onJoined={async () => {
           setIsRegistered(true);

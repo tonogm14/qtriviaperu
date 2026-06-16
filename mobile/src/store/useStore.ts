@@ -15,8 +15,6 @@ export interface User {
   avatarUrl?: string;
   isVip: boolean;
   role?: 'USER' | 'ADMIN';
-  balance?: number;
-  lives?: number;
   rank?: number;
 }
 
@@ -27,23 +25,6 @@ export interface Notification {
   body: string;
   time: string;
   read: boolean;
-}
-
-export interface CartItem {
-  id: string;        // itemId
-  name: string;
-  emoji: string;
-  price: number;
-  quantity: number;
-  maxStock: number;  // -1 = unlimited
-}
-
-export interface WithdrawalRecord {
-  id: string;
-  method: 'Yape' | 'Plin' | 'BCP';
-  date: string;
-  amount: number;
-  status: 'completado' | 'pendiente' | 'rechazado';
 }
 
 export interface ChatMessage {
@@ -74,9 +55,7 @@ interface AppStore {
   setHasLiveGame: (v: boolean) => void;
 
   // Profile
-  balance: number;
   rank: number;
-  lives: number;
 
   // Navigation active tab
   activeTab: string;
@@ -88,11 +67,6 @@ interface AppStore {
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
 
-  // Withdrawals
-  withdrawals: WithdrawalRecord[];
-  setWithdrawals: (withdrawals: WithdrawalRecord[]) => void;
-  addWithdrawal: (record: WithdrawalRecord) => void;
-
   // Chat
   chatMessages: ChatMessage[];
   addChatMessage: (msg: ChatMessage) => void;
@@ -101,12 +75,6 @@ interface AppStore {
   leaderboard: Array<{ rank: number; name: string; username: string; score: number; isMe: boolean }>;
   setLeaderboard: (leaderboard: AppStore['leaderboard']) => void;
 
-  // Cart (merch only — not persisted)
-  cart: CartItem[];
-  addToCart: (item: CartItem) => void;
-  removeFromCart: (id: string) => void;
-  updateCartQty: (id: string, qty: number) => void;
-  clearCart: () => void;
 }
 
 export const useStore = create<AppStore>()(
@@ -121,53 +89,26 @@ export const useStore = create<AppStore>()(
         const res = await authApi.login(email, password);
         const { token, user } = res.data.data;
         await AsyncStorage.setItem('qtrivia_token', token);
-        set({
-          token,
-          user,
-          authState: 'authenticated',
-          balance: user.balance ?? 0,
-          lives: user.lives ?? 3,
-          rank: user.rank ?? 0,
-        });
+        set({ token, user, authState: 'authenticated', rank: user.rank ?? 0 });
       },
 
       logout: async () => {
         await AsyncStorage.removeItem('qtrivia_token');
-        set({
-          token: null,
-          user: null,
-          authState: 'unauthenticated',
-          notifications: [],
-          withdrawals: [],
-          chatMessages: [],
-          leaderboard: [],
-        });
+        set({ token: null, user: null, authState: 'unauthenticated', notifications: [], chatMessages: [], leaderboard: [] });
       },
 
       register: async (name: string, email: string, username: string, password: string) => {
         const res = await authApi.register(name, email, username, password);
         const { token, user } = res.data.data;
         await AsyncStorage.setItem('qtrivia_token', token);
-        set({
-          token,
-          user,
-          authState: 'authenticated',
-          balance: user.balance ?? 0,
-          lives: user.lives ?? 3,
-          rank: user.rank ?? 0,
-        });
+        set({ token, user, authState: 'authenticated', rank: user.rank ?? 0 });
       },
 
       loadUser: async () => {
         try {
           const res = await authApi.me();
           const user = res.data.data;
-          set({
-            user,
-            balance: user.balance ?? get().balance,
-            lives: user.lives ?? get().lives,
-            rank: user.rank ?? get().rank,
-          });
+          set({ user, rank: user.rank ?? get().rank });
         } catch (e: any) {
           if (e?.response?.status === 401) {
             await AsyncStorage.removeItem('qtrivia_token');
@@ -187,9 +128,7 @@ export const useStore = create<AppStore>()(
       setHasLiveGame: (v) => set({ hasLiveGame: v }),
 
       // Profile
-      balance: 0,
       rank: 0,
-      lives: 3,
 
       activeTab: 'home',
       setActiveTab: (tab) => set({ activeTab: tab }),
@@ -208,12 +147,6 @@ export const useStore = create<AppStore>()(
           notifications: s.notifications.map((n) => ({ ...n, read: true })),
         })),
 
-      // Withdrawals
-      withdrawals: [],
-      setWithdrawals: (withdrawals) => set({ withdrawals }),
-      addWithdrawal: (record) =>
-        set((s) => ({ withdrawals: [record, ...s.withdrawals] })),
-
       // Chat
       chatMessages: [],
       addChatMessage: (msg) =>
@@ -225,29 +158,6 @@ export const useStore = create<AppStore>()(
       leaderboard: [],
       setLeaderboard: (leaderboard) => set({ leaderboard }),
 
-      // Cart
-      cart: [],
-      addToCart: (item) =>
-        set((s) => {
-          const existing = s.cart.find((c) => c.id === item.id);
-          if (existing) {
-            const max = item.maxStock === -1 ? 10 : item.maxStock;
-            return {
-              cart: s.cart.map((c) =>
-                c.id === item.id ? { ...c, quantity: Math.min(c.quantity + item.quantity, max) } : c
-              ),
-            };
-          }
-          return { cart: [...s.cart, { ...item }] };
-        }),
-      removeFromCart: (id) => set((s) => ({ cart: s.cart.filter((c) => c.id !== id) })),
-      updateCartQty: (id, qty) =>
-        set((s) => ({
-          cart: qty <= 0
-            ? s.cart.filter((c) => c.id !== id)
-            : s.cart.map((c) => (c.id === id ? { ...c, quantity: qty } : c)),
-        })),
-      clearCart: () => set({ cart: [] }),
     }),
     {
       name: 'qtrivia-store',
@@ -257,10 +167,7 @@ export const useStore = create<AppStore>()(
         token: state.token,
         user: state.user,
         authState: state.authState,
-        balance: state.balance,
-        lives: state.lives,
         rank: state.rank,
-        // vipPot excluded — purely cosmetic, resets from API each session
       }),
     }
   )

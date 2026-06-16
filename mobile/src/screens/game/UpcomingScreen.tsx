@@ -20,7 +20,7 @@ interface Props {
 const pad = (n: number) => String(n).padStart(2, '0');
 
 export const UpcomingScreen: React.FC<Props> = ({ navigation }) => {
-  const { lives, loadUser } = useStore();
+  const { loadUser } = useStore();
   const [game, setGame] = useState<any>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -195,7 +195,6 @@ export const UpcomingScreen: React.FC<Props> = ({ navigation }) => {
         <JoinGameModal
           visible={showModal}
           game={game}
-          userLives={lives}
           onClose={() => setShowModal(false)}
           onJoined={handleJoined}
         />

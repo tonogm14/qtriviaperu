@@ -51,7 +51,7 @@ const CHAT_UNLOCK_SECS = 600;
 const SPR = { damping: 20, stiffness: 65 } as const;
 
 export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { user, lives, chatMessages, addChatMessage, setGameState, incrementVipPot, loadUser } = useStore();
+  const { user, chatMessages, addChatMessage, setGameState, incrementVipPot, loadUser } = useStore();
   const { height: SCREEN_H } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -407,7 +407,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
             <View style={[styles.participarBadge, { backgroundColor: 'rgba(52,211,153,0.2)' }]}>
               <Text style={[styles.participarBadgeText, { color: '#34D399' }]}>
-                {(game?.entryFee ?? 0) > 0 ? `S/${game.entryFee}` : 'GRATIS'}
+                INSCRITO
               </Text>
             </View>
           </View>
@@ -417,13 +417,13 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
             <TouchableOpacity
               style={styles.participarBtn}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate('VipPay', { gameId: game.id, entryFee: game.entryFee, game })}
+              onPress={() => navigation.navigate('EventCode', { gameId: game.id, game })}
             >
               <View style={styles.participarLeft}>
-                <Text style={styles.participarText}>Participar</Text>
+                <Text style={styles.participarText}>Ver Detalles</Text>
               </View>
               <View style={styles.participarBadge}>
-                <Text style={styles.participarBadgeText}>S/{game.entryFee}</Text>
+                <Text style={styles.participarBadgeText}>ACCESO RESTRINGIDO</Text>
               </View>
             </TouchableOpacity>
           ) : (
@@ -516,7 +516,6 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
       <JoinGameModal
         visible={showJoinModal}
         game={game}
-        userLives={lives}
         onClose={() => setShowJoinModal(false)}
         onJoined={async () => {
           setIsJoined(true);

@@ -17,7 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { JuvQLogo } from '../../components/JuvQLogo';
 import { JuvShapes } from '../../components/JuvShapes';
-import { SparkleMotif, HeartMotif } from '../../components/JuvMotifs';
+import { SparkleMotif } from '../../components/JuvMotifs';
 import { JoinGameModal } from '../../components/JoinGameModal';
 import { useStore } from '../../store/useStore';
 import { gamesApi } from '../../services/api';
@@ -337,7 +337,7 @@ const fgStyles = StyleSheet.create({
 
 export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const tabBarHeight = useTabBarHeight();
-  const { connectedCount, balance, rank, lives, setGameState, loadUser, setHasLiveGame } = useStore();
+  const { connectedCount, rank, setGameState, loadUser, setHasLiveGame } = useStore();
 
   const [freeGame, setFreeGame] = useState<any>(null);
   const [vipGame, setVipGame] = useState<any>(null);
@@ -434,7 +434,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const handleJoined = async () => {
     setIsJoined(true);
     setShowJoinModal(false);
-    await loadUser(); // refresh lives count
+    await loadUser();
   };
 
   const handleEnterLobby = () => {
@@ -533,37 +533,19 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
           <Text style={styles.heroSub}>
             {nextHeroGame
-              ? `${nextHeroGame.maxQuestions ?? 12} preguntas · S/${nextHeroGame.prize} · ${nextHeroGame.entryFee > 0 ? `S/${nextHeroGame.entryFee} entrada` : 'gratis'}`
-              : '12 preguntas · S/100 · gratis'}
+              ? `${nextHeroGame.maxQuestions ?? 12} preguntas · Premio S/${nextHeroGame.prize}`
+              : '12 preguntas · Premio S/100'}
           </Text>
         </View>
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          {[
-            { label: 'BALANCE', value: `S/${balance || 0}`, color: 'white' },
-            { label: 'RANK', value: rank > 0 ? `#${rank}` : '—', color: '#FACC15' },
-          ].map((s) => (
-            <View key={s.label} style={styles.statCell}>
-              <Text style={[styles.statValue, { color: s.color }]}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-          {(lives ?? 0) > 0 ? (
-            <View style={styles.statCell}>
-              <Text style={[styles.statValue, { color: '#EC4899' }]}>{lives}</Text>
-              <Text style={styles.statLabel}>VIDAS</Text>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={[styles.statCell, styles.statCellEmpty]}
-              onPress={() => navigation.navigate('Shop')}
-              activeOpacity={0.8}
-            >
-              <HeartMotif size={22} color="rgba(236,72,153,0.4)" />
-              <Text style={styles.statLabelBuy}>+ vidas</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.statCell}>
+            <Text style={[styles.statValue, { color: '#FACC15' }]}>
+              {rank > 0 ? `#${rank}` : '—'}
+            </Text>
+            <Text style={styles.statLabel}>RANK</Text>
+          </View>
         </View>
 
         {/* Free game card */}
@@ -596,7 +578,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.vipBadgeText}>TRIVIA VIP</Text>
+              <Text style={styles.vipBadgeText}>EVENTO ESPECIAL</Text>
             </LinearGradient>
             <Text style={styles.vipTime}>
               {vipGame?.scheduledAt
@@ -623,7 +605,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             {vipGame?.prizeMode === 'POT' && (
               <View style={styles.boteIncr}>
                 <View style={styles.boteIncrDot} />
-                <Text style={styles.boteIncrText}>Bote acumulado de inscripciones</Text>
+                <Text style={styles.boteIncrText}>Premio acumulado del evento</Text>
               </View>
             )}
           </View>
@@ -707,28 +689,24 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           ) : isVipJoined ? (
             <View style={[styles.participarBtn, styles.participarJoined]}>
               <View style={styles.participarLeft}>
-                <Text style={[styles.participarText, { color: '#34D399' }]}>✓ Ya estás inscrito</Text>
+                <Text style={[styles.participarText, { color: '#34D399' }]}>✓ Acceso Habilitado</Text>
               </View>
               <View style={[styles.participarBadge, { backgroundColor: 'rgba(52,211,153,0.2)' }]}>
-                <Text style={[styles.participarBadgeText, { color: '#34D399' }]}>
-                  S/{vipGame?.entryFee ?? 10}
-                </Text>
+                <Text style={[styles.participarBadgeText, { color: '#34D399' }]}>INSCRITO</Text>
               </View>
             </View>
           ) : (
             <TouchableOpacity
-              onPress={() => navigation.navigate('VipPay', vipGame ? { gameId: vipGame.id, entryFee: vipGame.entryFee, game: vipGame } : undefined)}
+              onPress={() => navigation.navigate('EventCode', vipGame ? { gameId: vipGame.id, game: vipGame } : undefined)}
               style={styles.participarBtn}
               activeOpacity={0.85}
             >
               <View style={styles.participarLeft}>
                 <SparkleMotif size={16} color="#1F0A2E" />
-                <Text style={styles.participarText}>Participar</Text>
+                <Text style={styles.participarText}>Ver Detalles</Text>
               </View>
               <View style={styles.participarBadge}>
-                <Text style={styles.participarBadgeText}>
-                  S/{vipGame?.entryFee ?? 10}
-                </Text>
+                <Text style={styles.participarBadgeText}>ACCESO RESTRINGIDO</Text>
               </View>
             </TouchableOpacity>
           )}
@@ -741,7 +719,6 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       <JoinGameModal
         visible={showJoinModal}
         game={freeGame}
-        userLives={lives}
         onClose={() => setShowJoinModal(false)}
         onJoined={handleJoined}
       />

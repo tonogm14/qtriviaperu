@@ -15,7 +15,6 @@ import { gamesApi } from '../services/api';
 interface Props {
   visible: boolean;
   game: any;
-  userLives: number;
   onClose: () => void;
   onJoined: () => void;
 }
@@ -67,7 +66,6 @@ function CheckIcon() {
 export const JoinGameModal: React.FC<Props> = ({
   visible,
   game,
-  userLives,
   onClose,
   onJoined,
 }) => {
@@ -80,9 +78,9 @@ export const JoinGameModal: React.FC<Props> = ({
 
   const rules = [
     'Inscripciones cierran 1 minuto antes',
-    'Registro gratis — sin costo de entrada',
-    'Si fallas una pregunta, usas 1 vida para seguir',
-    'Premio se reparte entre todos los ganadores',
+    'Registro completamente gratis',
+    'Si fallas una pregunta quedas eliminado',
+    'El premio se entrega al ganador',
   ];
 
   const handleJoin = async () => {
@@ -162,7 +160,7 @@ export const JoinGameModal: React.FC<Props> = ({
             {/* How it works */}
             <Text style={styles.sectionLabel}>CÓMO VA</Text>
             <Text style={styles.descText}>
-              {`${game?.maxQuestions ?? 12} preguntas. ${game?.timePerQuestion ?? 10} segundos por respuesta. Registro gratis. Si fallas, puedes usar una vida para seguir jugando — las vidas se consiguen en la tienda.`}
+              {`${game?.maxQuestions ?? 12} preguntas. ${game?.timePerQuestion ?? 10} segundos por respuesta. Registro completamente gratis. Responde correctamente para seguir en el juego.`}
             </Text>
 
             {/* Rules */}
