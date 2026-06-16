@@ -146,22 +146,40 @@ async function tick(io: SocketServer) {
     }
   }
 
-  // ── Auto-finish LIVE games stuck for more than 2 hours ───────────────────────
+  // ── Auto-finish LIVE games stuck for more than 1 hour ────────────────────────
   // Uses updatedAt (last status change) so manually-run games aren't killed mid-game.
-  const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-  const stuckGames = await prisma.game.findMany({
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const stuckLiveGames = await prisma.game.findMany({
     where: {
       status: 'LIVE',
-      updatedAt: { lt: twoHoursAgo },
+      updatedAt: { lt: oneHourAgo },
     },
   });
 
-  for (const game of stuckGames) {
+  for (const game of stuckLiveGames) {
     try {
       await gameService.finishGame(game.id);
       console.log(`[scheduler] force-finished stuck LIVE game → ${game.title} (${game.id})`);
     } catch (err) {
       console.error(`[scheduler] failed to force-finish ${game.id}:`, err);
+    }
+  }
+
+  // ── Auto-cancel LOBBY games stuck for more than 1 hour ────────────────────────
+  // Games that opened registration but were never started get cancelled and, if
+  // recurring, their next occurrence is scheduled automatically.
+  const stuckLobbyGames = await prisma.game.findMany({
+    where: {
+      status: 'LOBBY',
+      updatedAt: { lt: oneHourAgo },
+    },
+  });
+
+  for (const game of stuckLobbyGames) {
+    try {
+      await gameService.cancelStuckLobby(game.id);
+    } catch (err) {
+      console.error(`[scheduler] failed to cancel stuck LOBBY game ${game.id}:`, err);
     }
   }
 

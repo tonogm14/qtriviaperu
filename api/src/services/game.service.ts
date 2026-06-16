@@ -316,3 +316,63 @@ export async function finishGame(gameId: string): Promise<{
 
   return { winner: winnerList[0]?.username ?? null, winners: winnerList, prize: totalPrize };
 }
+
+// Cancels a LOBBY game that nobody ever started, then schedules the next occurrence
+// if the game is recurring. Uses an atomic guard so concurrent calls are safe.
+export async function cancelStuckLobby(gameId: string): Promise<void> {
+  const game = await prisma.game.findUnique({ where: { id: gameId } });
+  if (!game) return;
+
+  const { count } = await prisma.game.updateMany({
+    where: { id: gameId, status: GameStatus.LOBBY },
+    data: { status: GameStatus.CANCELLED },
+  });
+  if (count === 0) return;
+
+  console.log(`[cancelStuckLobby] cancelled stuck LOBBY game → ${game.title} (${gameId})`);
+
+  if (!game.isRecurring || !game.recurringTime) return;
+
+  try {
+    const alreadyExists = await prisma.game.findFirst({
+      where: {
+        sourceGameId: gameId,
+        status: { notIn: [GameStatus.ARCHIVED, GameStatus.CANCELLED] },
+      },
+    });
+    if (alreadyExists) return;
+
+    const nextScheduledAt = getNextOccurrenceUTC(game.recurringTime);
+    const gameQuestions = await prisma.gameQuestion.findMany({
+      where: { gameId },
+      select: { questionId: true, order: true },
+    });
+    const nextGame = await prisma.game.create({
+      data: {
+        title: game.title,
+        type: game.type,
+        isRecurring: true,
+        recurringTime: game.recurringTime,
+        scheduledAt: nextScheduledAt,
+        status: GameStatus.PENDING,
+        prize: game.prize,
+        entryFee: game.entryFee,
+        maxQuestions: game.maxQuestions,
+        timePerQuestion: game.timePerQuestion,
+        host: game.host,
+        category: game.category,
+        winnerMode: game.winnerMode,
+        prizeSlots: game.prizeSlots ?? Prisma.JsonNull,
+        sourceGameId: gameId,
+      },
+    });
+    if (gameQuestions.length > 0) {
+      await prisma.gameQuestion.createMany({
+        data: gameQuestions.map(q => ({ gameId: nextGame.id, questionId: q.questionId, order: q.order })),
+      });
+    }
+    console.log(`[cancelStuckLobby] next occurrence created → ${nextGame.title} @ ${nextScheduledAt}`);
+  } catch (err) {
+    console.error(`[cancelStuckLobby] failed to create next occurrence for ${gameId}:`, err);
+  }
+}
