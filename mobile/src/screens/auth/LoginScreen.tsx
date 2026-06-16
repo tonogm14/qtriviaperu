@@ -23,6 +23,42 @@ import { gamesApi } from '../../services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// Separate component so the hook only runs when credentials are present
+function GoogleSignInButton({ onSuccess, onError }: { onSuccess: (token: string) => void; onError: () => void }) {
+  const [loading, setLoading] = React.useState(false);
+  const [, response, promptAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  React.useEffect(() => {
+    if (response?.type === 'success') {
+      const token = response.authentication?.accessToken;
+      if (token) {
+        setLoading(true);
+        onSuccess(token);
+      }
+    }
+  }, [response]);
+
+  return (
+    <TouchableOpacity
+      style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: 'white' }}
+      activeOpacity={0.8}
+      onPress={() => promptAsync()}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#1F0A2E" size="small" />
+      ) : (
+        <Image source={{ uri: 'https://www.google.com/favicon.ico' }} style={{ width: 18, height: 18 }} />
+      )}
+      <Text style={{ color: '#1F0A2E', fontWeight: '700', fontSize: 15 }}>Continuar con Google</Text>
+    </TouchableOpacity>
+  );
+}
+
 interface Props {
   navigation: any;
 }
@@ -33,7 +69,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [freePrize, setFreePrize] = useState<number | null>(null);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const login = useStore((s) => s.login);
   const loginWithGoogle = useStore((s) => s.loginWithGoogle);
 
@@ -44,23 +79,9 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       : process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID)
   );
 
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
-
-  useEffect(() => {
-    if (googleResponse?.type === 'success') {
-      const accessToken = googleResponse.authentication?.accessToken;
-      if (accessToken) {
-        setGoogleLoading(true);
-        loginWithGoogle(accessToken)
-          .catch(() => setError('No se pudo iniciar sesión con Google.'))
-          .finally(() => setGoogleLoading(false));
-      }
-    }
-  }, [googleResponse]);
+  const handleGoogleSuccess = (accessToken: string) => {
+    loginWithGoogle(accessToken).catch(() => setError('No se pudo iniciar sesión con Google.'));
+  };
 
   useEffect(() => {
     gamesApi.list({ limit: 20 })
@@ -182,22 +203,16 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Social buttons */}
             <View style={styles.socialRow}>
-              <TouchableOpacity
-                style={[styles.socialBtnLight, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, !googleConfigured && { opacity: 0.4 }]}
-                activeOpacity={0.8}
-                onPress={() => googleConfigured && promptGoogleAsync()}
-                disabled={googleLoading || !googleConfigured}
-              >
-                {googleLoading ? (
-                  <ActivityIndicator color="#1F0A2E" size="small" />
-                ) : (
-                  <Image
-                    source={{ uri: 'https://www.google.com/favicon.ico' }}
-                    style={{ width: 18, height: 18 }}
-                  />
-                )}
-                <Text style={styles.socialTextDark}>Continuar con Google</Text>
-              </TouchableOpacity>
+              {googleConfigured ? (
+                <GoogleSignInButton
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setError('No se pudo iniciar sesión con Google.')}
+                />
+              ) : (
+                <View style={[styles.socialBtnLight, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: 0.4 }]}>
+                  <Text style={styles.socialTextDark}>Continuar con Google</Text>
+                </View>
+              )}
             </View>
           </View>
 
