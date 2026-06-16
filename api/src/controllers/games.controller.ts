@@ -1,11 +1,29 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs';
+import multer from 'multer';
 import { PrismaClient, GameStatus, GameType, Prisma } from '@prisma/client';
 import * as gameService from '../services/game.service';
 import { broadcastGameStart, closeRegistrationOnly, isRegistrationClosed } from '../socket/gameSocket';
 import { io } from '../index';
 import { AuthRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
+
+const UPLOADS_DIR = path.join(__dirname, '../../uploads/prizes');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+export const prizeImageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (req, _file, cb) => cb(null, `${req.params.id}${path.extname(_file.originalname).toLowerCase()}`),
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (/^image\/(jpeg|png|webp|gif)$/.test(file.mimetype)) cb(null, true);
+    else cb(new Error('Solo imágenes JPEG, PNG, WebP o GIF'));
+  },
+}).single('image');
 
 function param(req: Request, key: string): string {
   const val = req.params[key];
@@ -73,6 +91,8 @@ const createGameSchema = z.object({
   potPercent: z.number().min(1).max(100).default(100),
   streamUrl: z.string().url().optional().nullable(),
   warmUpQuestionId: z.string().optional().nullable(),
+  prizeTitle: z.string().max(200).optional().nullable(),
+  prizeDescription: z.string().max(1000).optional().nullable(),
 });
 
 const updateGameSchema = z.object({
@@ -93,6 +113,8 @@ const updateGameSchema = z.object({
   potPercent: z.number().min(1).max(100).optional(),
   streamUrl: z.string().url().optional().nullable(),
   warmUpQuestionId: z.string().optional().nullable(),
+  prizeTitle: z.string().max(200).optional().nullable(),
+  prizeDescription: z.string().max(1000).optional().nullable(),
 });
 
 const listGamesSchema = z.object({
@@ -420,6 +442,27 @@ export async function getGameLeaderboard(req: Request, res: Response, next: Next
     }));
 
     res.json({ data: leaderboard });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function uploadPrizeImage(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const gameId = param(req, 'id');
+    const file = (req as any).file as Express.Multer.File | undefined;
+    if (!file) { res.status(400).json({ error: 'No se recibió imagen' }); return; }
+
+    // Delete previous prize image for this game (any extension)
+    const existing = await prisma.game.findUnique({ where: { id: gameId }, select: { prizeImage: true } });
+    if (existing?.prizeImage) {
+      const oldPath = path.join(UPLOADS_DIR, path.basename(existing.prizeImage));
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    const imageUrl = `/uploads/prizes/${file.filename}`;
+    await prisma.game.update({ where: { id: gameId }, data: { prizeImage: imageUrl } });
+    res.json({ data: { prizeImage: imageUrl } });
   } catch (err) {
     next(err);
   }

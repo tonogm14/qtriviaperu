@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polyline } from 'react-native-svg';
-import { gamesApi } from '../services/api';
+import { api, gamesApi } from '../services/api';
 
 interface Props {
   visible: boolean;
@@ -140,6 +141,27 @@ export const JoinGameModal: React.FC<Props> = ({
               <Text style={styles.prizeLabel}>PREMIO</Text>
               <Text style={styles.prizeAmount}>S/{prize.toLocaleString()}</Text>
             </View>
+
+            {/* Prize details */}
+            {(game?.prizeTitle || game?.prizeDescription || game?.prizeImage) && (
+              <View style={styles.prizeDetails}>
+                {game?.prizeImage && (
+                  <Image
+                    source={{ uri: `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${game.prizeImage}` }}
+                    style={styles.prizeDetailImg}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={{ flex: 1 }}>
+                  {game?.prizeTitle && (
+                    <Text style={styles.prizeDetailTitle}>{game.prizeTitle}</Text>
+                  )}
+                  {game?.prizeDescription && (
+                    <Text style={styles.prizeDetailDesc}>{game.prizeDescription}</Text>
+                  )}
+                </View>
+              </View>
+            )}
 
             {/* Stats grid */}
             <View style={styles.statsGrid}>
@@ -414,4 +436,12 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.55)',
     fontWeight: '600',
   },
+  prizeDetails: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14,
+    padding: 10, marginBottom: 10,
+  },
+  prizeDetailImg: { width: 52, height: 52, borderRadius: 10, flexShrink: 0 },
+  prizeDetailTitle: { color: 'white', fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  prizeDetailDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 17 },
 });

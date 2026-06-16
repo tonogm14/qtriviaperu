@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'path';
 import express from 'express';
 import http from 'http';
 import { Server as SocketServer } from 'socket.io';
@@ -62,6 +63,7 @@ app.use(
 app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ─── Robots ───────────────────────────────────────────────────────────────────
 

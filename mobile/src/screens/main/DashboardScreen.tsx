@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useTabBarHeight } from '../../hooks/useTabBarHeight';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,7 +21,7 @@ import { JuvShapes } from '../../components/JuvShapes';
 import { SparkleMotif } from '../../components/JuvMotifs';
 import { JoinGameModal } from '../../components/JoinGameModal';
 import { useStore } from '../../store/useStore';
-import { gamesApi } from '../../services/api';
+import { api, gamesApi } from '../../services/api';
 
 interface Props {
   navigation: any;
@@ -140,6 +141,25 @@ function FreeGameCard({
           </Text>
         </Animated.View>
       </View>
+
+      {/* prize details */}
+      {(game.prizeTitle || game.prizeDescription || game.prizeImage) && (
+        <View style={fgStyles.prizeDetails}>
+          {game.prizeImage && (
+            <Image
+              source={{ uri: `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${game.prizeImage}` }}
+              style={fgStyles.prizeDetailImg}
+              resizeMode="cover"
+            />
+          )}
+          {game.prizeTitle && (
+            <Text style={fgStyles.prizeDetailTitle}>{game.prizeTitle}</Text>
+          )}
+          {game.prizeDescription && (
+            <Text style={fgStyles.prizeDetailDesc}>{game.prizeDescription}</Text>
+          )}
+        </View>
+      )}
 
       {/* podium — same as VIP */}
       {(podium[0] as any)?.allCorrect ? (
@@ -333,6 +353,14 @@ const fgStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
+  prizeDetails: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14,
+    padding: 10, marginTop: 4, marginBottom: 4,
+  },
+  prizeDetailImg: { width: 52, height: 52, borderRadius: 10, flexShrink: 0 },
+  prizeDetailTitle: { color: 'white', fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  prizeDetailDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 17 },
 });
 
 export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
@@ -609,6 +637,25 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             )}
           </View>
+
+          {/* prize details */}
+          {(vipGame?.prizeTitle || vipGame?.prizeDescription || vipGame?.prizeImage) && (
+            <View style={styles.prizeDetails}>
+              {vipGame?.prizeImage && (
+                <Image
+                  source={{ uri: `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${vipGame.prizeImage}` }}
+                  style={styles.prizeDetailImg}
+                  resizeMode="cover"
+                />
+              )}
+              {vipGame?.prizeTitle && (
+                <Text style={styles.prizeDetailTitle}>{vipGame.prizeTitle}</Text>
+              )}
+              {vipGame?.prizeDescription && (
+                <Text style={styles.prizeDetailDesc}>{vipGame.prizeDescription}</Text>
+              )}
+            </View>
+          )}
 
           {(podium[0] as any)?.allCorrect ? (
             <View style={{ paddingVertical: 8, paddingHorizontal: 4, alignItems: 'center', gap: 4 }}>
@@ -1158,4 +1205,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
+  prizeDetails: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 14,
+    padding: 10, marginTop: 4, marginBottom: 4,
+  },
+  prizeDetailImg: { width: 52, height: 52, borderRadius: 10, flexShrink: 0 },
+  prizeDetailTitle: { color: 'white', fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  prizeDetailDesc: { color: 'rgba(255,255,255,0.65)', fontSize: 12, lineHeight: 17 },
 });

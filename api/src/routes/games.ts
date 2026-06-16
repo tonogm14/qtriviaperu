@@ -103,5 +103,11 @@ router.delete('/:id/stream', authenticate, requirePermission(PERMISSIONS.GAMES_W
 // Player-only routes (admins cannot join games as players)
 router.get('/:id/my-entry', authenticate, gamesController.getMyEntry as RequestHandler);
 router.post('/:id/join', authenticate, requireUser, gamesController.joinGame as RequestHandler);
+router.post('/:id/prize-image', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), (req, res, next) => {
+  gamesController.prizeImageUpload(req, res, (err) => {
+    if (err) return next(err);
+    gamesController.uploadPrizeImage(req, res, next);
+  });
+});
 
 export default router;
