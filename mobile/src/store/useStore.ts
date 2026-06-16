@@ -34,6 +34,15 @@ export interface ChatMessage {
   avatarColor: string;
 }
 
+export interface CartItem {
+  id: string;
+  name: string;
+  emoji: string;
+  price: number;
+  quantity: number;
+  maxStock: number;
+}
+
 interface AppStore {
   // Auth
   authState: AuthState;
@@ -74,6 +83,13 @@ interface AppStore {
   // Leaderboard
   leaderboard: Array<{ rank: number; name: string; username: string; score: number; isMe: boolean }>;
   setLeaderboard: (leaderboard: AppStore['leaderboard']) => void;
+
+  // Cart
+  cart: CartItem[];
+  addToCart: (item: CartItem) => void;
+  removeFromCart: (id: string) => void;
+  updateCartQty: (id: string, qty: number) => void;
+  clearCart: () => void;
 
 }
 
@@ -157,6 +173,31 @@ export const useStore = create<AppStore>()(
       // Leaderboard
       leaderboard: [],
       setLeaderboard: (leaderboard) => set({ leaderboard }),
+
+      // Cart
+      cart: [],
+      addToCart: (item) =>
+        set((s) => {
+          const existing = s.cart.find((c) => c.id === item.id);
+          if (existing) {
+            return {
+              cart: s.cart.map((c) =>
+                c.id === item.id
+                  ? { ...c, quantity: Math.min(c.quantity + item.quantity, item.maxStock === -1 ? 99 : item.maxStock) }
+                  : c
+              ),
+            };
+          }
+          return { cart: [...s.cart, { ...item }] };
+        }),
+      removeFromCart: (id) => set((s) => ({ cart: s.cart.filter((c) => c.id !== id) })),
+      updateCartQty: (id, qty) =>
+        set((s) => ({
+          cart: qty <= 0
+            ? s.cart.filter((c) => c.id !== id)
+            : s.cart.map((c) => (c.id === id ? { ...c, quantity: qty } : c)),
+        })),
+      clearCart: () => set({ cart: [] }),
 
     }),
     {

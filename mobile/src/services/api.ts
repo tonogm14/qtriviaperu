@@ -93,6 +93,23 @@ export const prizesApi = {
     api.get<{ data: any[] }>('/api/withdrawals'),
 };
 
+// Shop — physical merchandise
+export const shopApi = {
+  listProducts: () =>
+    api.get<{ data: { packs: any[]; merch: any[] } }>('/api/shop/products'),
+  cartCheckout: (data: {
+    items: { itemId: string; quantity: number }[];
+    method: 'yape' | 'plin' | 'card';
+    recipientName: string;
+    dni: string;
+    phone: string;
+    address: string;
+    notes?: string;
+  }) => api.post<{ data: { cartRef: string; orders: number } }>('/api/shop/cart-checkout', data),
+  myOrders: () =>
+    api.get<{ data: { merch: any[] } }>('/api/shop/my-orders'),
+};
+
 // Config — public legal content
 export const configApi = {
   getTerms: () =>

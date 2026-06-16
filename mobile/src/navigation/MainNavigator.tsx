@@ -12,6 +12,11 @@ import { NotificationsScreen } from '../screens/wallet/NotificationsScreen';
 import { ProfileEditScreen } from '../screens/main/ProfileEditScreen';
 import { PrizesScreen } from '../screens/prizes/PrizesScreen';
 import { EventCodeScreen } from '../screens/events/EventCodeScreen';
+import { ShopScreen } from '../screens/main/ShopScreen';
+import { ShopCartScreen } from '../screens/wallet/ShopCartScreen';
+import { ShopCheckoutScreen } from '../screens/wallet/ShopCheckoutScreen';
+import { MyOrdersScreen } from '../screens/wallet/MyOrdersScreen';
+import { OrderDetailScreen } from '../screens/wallet/OrderDetailScreen';
 import { JuvTabBar } from '../components/JuvTabBar';
 import { useStore } from '../store/useStore';
 import { track } from '../services/analytics';
@@ -27,11 +32,16 @@ export type MainStackParamList = {
   Notifications: undefined;
   Prizes: undefined;
   EventCode: { gameId?: string; game?: any } | undefined;
+  Shop: undefined;
+  ShopCart: undefined;
+  ShopCheckout: undefined;
+  MyOrders: undefined;
+  OrderDetail: { order: any };
 };
 
 const Stack = createStackNavigator<MainStackParamList>();
 
-const TAB_BAR_VISIBLE_SCREENS = ['Dashboard', 'Leaderboard', 'Profile'];
+const TAB_BAR_VISIBLE_SCREENS = ['Dashboard', 'Leaderboard', 'Shop', 'Profile'];
 
 const TabBarController: React.FC<{ currentRoute: string }> = ({ currentRoute }) => {
   const { activeTab, setActiveTab, gameState } = useStore();
@@ -49,9 +59,10 @@ const TabBarController: React.FC<{ currentRoute: string }> = ({ currentRoute }) 
       }
       return;
     }
-    const screenMap: Record<string, 'Dashboard' | 'Leaderboard' | 'Profile'> = {
+    const screenMap: Record<string, keyof MainStackParamList> = {
       home: 'Dashboard',
       rank: 'Leaderboard',
+      shop: 'Shop',
       profile: 'Profile',
     };
     const screen = screenMap[tab];
@@ -93,6 +104,11 @@ export const MainNavigator: React.FC = () => {
                 Lobby: 'live',
                 Live: 'live',
                 Leaderboard: 'rank',
+                Shop: 'shop',
+                ShopCart: 'shop',
+                ShopCheckout: 'shop',
+                MyOrders: 'shop',
+                OrderDetail: 'shop',
                 Profile: 'profile',
               };
               if (tabMap[lastRoute.name]) {
@@ -120,6 +136,11 @@ export const MainNavigator: React.FC = () => {
         <Stack.Screen name="Prizes" component={PrizesScreen} />
         <Stack.Screen name="EventCode" component={EventCodeScreen} />
         <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+        <Stack.Screen name="Shop" component={ShopScreen} />
+        <Stack.Screen name="ShopCart" component={ShopCartScreen} />
+        <Stack.Screen name="ShopCheckout" component={ShopCheckoutScreen} />
+        <Stack.Screen name="MyOrders" component={MyOrdersScreen} />
+        <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
       </Stack.Navigator>
 
       <TabBarController currentRoute={currentRoute} />

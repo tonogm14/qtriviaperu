@@ -16,7 +16,7 @@ import { SparkleMotif } from '../../components/JuvMotifs';
 import { useStore } from '../../store/useStore';
 import { authApi } from '../../services/api';
 import { track } from '../../services/analytics';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
 interface Props {
   navigation: any;
@@ -32,6 +32,14 @@ const LockIcon = () => (
   <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
     <Rect x={4} y={11} width={16} height={10} rx={2} />
     <Path d="M8 11V7a4 4 0 018 0v4" />
+  </Svg>
+);
+
+const ShopBagIcon = () => (
+  <Svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
+    <Path d="M3 6h18" />
+    <Path d="M16 10a4 4 0 01-8 0" />
   </Svg>
 );
 
@@ -134,6 +142,12 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
             label="Mis Premios"
             sub={stats && stats.gamesWon > 0 ? `${stats.gamesWon} premios · S/${stats.totalPrize.toLocaleString()} histórico` : 'Ver historial de premios recibidos'}
             onPress={() => { track('tap', 'Profile', 'prizes'); navigation.navigate('Prizes'); }}
+          />
+          <JuvMenuItem
+            icon={<ShopBagIcon />}
+            label="Mis Pedidos"
+            sub="Historial de compras en la tienda"
+            onPress={() => { track('tap', 'Profile', 'orders'); navigation.navigate('MyOrders'); }}
           />
           <JuvMenuItem
             icon={<BellIcon />}

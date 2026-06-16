@@ -74,6 +74,32 @@ const TrophyIcon: React.FC<{ active: boolean }> = ({ active }) => (
 );
 
 
+const ShopIcon: React.FC<{ active: boolean }> = ({ active }) => (
+  <Svg viewBox="0 0 28 28" width={26} height={26} fill="none">
+    <Path
+      d="M5 8l2.5 10h13L23 8H5z"
+      fill={active ? '#FACC15' : 'none'}
+      stroke={active ? '#FACC15' : 'rgba(255,255,255,0.7)'}
+      strokeWidth={2}
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M5 8l-1-4H2"
+      stroke={active ? '#FACC15' : 'rgba(255,255,255,0.7)'}
+      strokeWidth={2}
+      strokeLinecap="round"
+    />
+    <Circle cx={10} cy={22} r={1.5} fill={active ? '#1F0A2E' : 'rgba(255,255,255,0.7)'} />
+    <Circle cx={18} cy={22} r={1.5} fill={active ? '#1F0A2E' : 'rgba(255,255,255,0.7)'} />
+    <Path
+      d="M11 13v-2a3 3 0 016 0v2"
+      stroke={active ? '#1F0A2E' : 'rgba(255,255,255,0.7)'}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+    />
+  </Svg>
+);
+
 const UserIcon: React.FC<{ active: boolean }> = ({ active }) => (
   <Svg viewBox="0 0 28 28" width={26} height={26}>
     <Circle
@@ -102,6 +128,7 @@ const TABS = [
   { id: 'home',    label: 'Inicio',  Icon: HomeIcon,   isLive: false },
   { id: 'live',    label: 'En vivo', Icon: LiveIcon,   isLive: true  },
   { id: 'rank',    label: 'Ranking', Icon: TrophyIcon, isLive: false },
+  { id: 'shop',    label: 'Tienda',  Icon: ShopIcon,   isLive: false },
   { id: 'profile', label: 'Tú',      Icon: UserIcon,   isLive: false },
 ];
 
