@@ -8,15 +8,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { JuvQLogo } from '../../components/JuvQLogo';
 import { JuvPillInput } from '../../components/JuvPillInput';
 import { JuvShapes } from '../../components/JuvShapes';
 import { SparkleMotif } from '../../components/JuvMotifs';
 import { useStore } from '../../store/useStore';
 import { gamesApi } from '../../services/api';
+
+WebBrowser.maybeCompleteAuthSession();
 
 interface Props {
   navigation: any;
@@ -28,7 +33,27 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [freePrize, setFreePrize] = useState<number | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const login = useStore((s) => s.login);
+  const loginWithGoogle = useStore((s) => s.loginWithGoogle);
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const accessToken = googleResponse.authentication?.accessToken;
+      if (accessToken) {
+        setGoogleLoading(true);
+        loginWithGoogle(accessToken)
+          .catch(() => setError('No se pudo iniciar sesión con Google.'))
+          .finally(() => setGoogleLoading(false));
+      }
+    }
+  }, [googleResponse]);
 
   useEffect(() => {
     gamesApi.list({ limit: 20 })
@@ -150,7 +175,20 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
             {/* Social buttons */}
             <View style={styles.socialRow}>
-              <TouchableOpacity style={[styles.socialBtnLight, { flex: 1 }]} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={[styles.socialBtnLight, { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
+                activeOpacity={0.8}
+                onPress={() => promptGoogleAsync()}
+                disabled={googleLoading}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator color="#1F0A2E" size="small" />
+                ) : (
+                  <Image
+                    source={{ uri: 'https://www.google.com/favicon.ico' }}
+                    style={{ width: 18, height: 18 }}
+                  />
+                )}
                 <Text style={styles.socialTextDark}>Continuar con Google</Text>
               </TouchableOpacity>
             </View>

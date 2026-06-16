@@ -51,6 +51,8 @@ interface AppStore {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (name: string, email: string, username: string, password: string) => Promise<void>;
+  loginWithGoogle: (accessToken: string) => Promise<void>;
+  setUser: (user: User) => void;
   loadUser: () => Promise<void>;
 
   // Game
@@ -119,6 +121,15 @@ export const useStore = create<AppStore>()(
         await AsyncStorage.setItem('qtrivia_token', token);
         set({ token, user, authState: 'authenticated', rank: user.rank ?? 0 });
       },
+
+      loginWithGoogle: async (accessToken: string) => {
+        const res = await authApi.googleLogin(accessToken);
+        const { token, user } = res.data.data;
+        await AsyncStorage.setItem('qtrivia_token', token);
+        set({ token, user, authState: 'authenticated', rank: user.rank ?? 0 });
+      },
+
+      setUser: (user: User) => set({ user }),
 
       loadUser: async () => {
         try {

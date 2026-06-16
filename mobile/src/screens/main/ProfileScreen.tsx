@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -14,7 +15,7 @@ import { JuvBadge } from '../../components/JuvBadge';
 import { JuvMenuItem } from '../../components/JuvMenu';
 import { SparkleMotif } from '../../components/JuvMotifs';
 import { useStore } from '../../store/useStore';
-import { authApi } from '../../services/api';
+import { api, authApi } from '../../services/api';
 import { track } from '../../services/analytics';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
@@ -102,12 +103,19 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <LinearGradient
-                colors={['#EC4899', '#6B21A8']}
-                style={styles.avatarInner}
-              >
-                <Text style={styles.avatarText}>{initial}</Text>
-              </LinearGradient>
+              {user?.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl.startsWith('/') ? `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${user.avatarUrl}` : user.avatarUrl }}
+                  style={styles.avatarInner}
+                />
+              ) : (
+                <LinearGradient
+                  colors={['#EC4899', '#6B21A8']}
+                  style={styles.avatarInner}
+                >
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </LinearGradient>
+              )}
             </LinearGradient>
           </View>
           <Text style={styles.userName}>{user?.name || 'Jugador'}</Text>

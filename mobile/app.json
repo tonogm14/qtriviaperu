@@ -25,10 +25,19 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
+    "scheme": "qtriviaperu",
     "plugins": [
       "expo-font",
       "expo-notifications",
-      "expo-video"
+      "expo-video",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "QTriviaPeru necesita acceso a tus fotos para cambiar tu foto de perfil.",
+          "cameraPermission": "QTriviaPeru necesita acceso a la cámara para tomar tu foto de perfil."
+        }
+      ]
     ],
     "newArchEnabled": true,
     "sdkVersion": "54.0.0"

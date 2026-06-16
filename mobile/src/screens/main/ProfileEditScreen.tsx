@@ -8,26 +8,79 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import * as ImagePicker from 'expo-image-picker';
 import { JuvPillInput } from '../../components/JuvPillInput';
 import { JuvShapes } from '../../components/JuvShapes';
 import { Colors } from '../../theme/colors';
 import { useStore } from '../../store/useStore';
-import { authApi } from '../../services/api';
+import { api, authApi } from '../../services/api';
 
 interface Props {
   navigation: any;
 }
 
 export const ProfileEditScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, loadUser } = useStore();
+  const { user, loadUser, setUser } = useStore();
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [loading, setLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  const avatarUri = user?.avatarUrl
+    ? (user.avatarUrl.startsWith('/') ? `${(api.defaults.baseURL ?? '').replace(/\/$/, '')}${user.avatarUrl}` : user.avatarUrl)
+    : null;
+
+  const handlePickAvatar = () => {
+    Alert.alert('Foto de perfil', '¿De dónde quieres tomar la foto?', [
+      {
+        text: 'Galería',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería.'); return; }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true, aspect: [1, 1], quality: 0.85,
+          });
+          if (!result.canceled && result.assets[0]) uploadAvatar(result.assets[0].uri);
+        },
+      },
+      {
+        text: 'Cámara',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') { Alert.alert('Permiso denegado', 'Necesitamos acceso a tu cámara.'); return; }
+          const result = await ImagePicker.launchCameraAsync({
+            allowsEditing: true, aspect: [1, 1], quality: 0.85,
+          });
+          if (!result.canceled && result.assets[0]) uploadAvatar(result.assets[0].uri);
+        },
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  };
+
+  const uploadAvatar = async (uri: string) => {
+    setAvatarLoading(true);
+    try {
+      const formData = new FormData();
+      const ext = uri.split('.').pop()?.toLowerCase() ?? 'jpg';
+      formData.append('avatar', { uri, name: `avatar.${ext}`, type: `image/${ext === 'jpg' ? 'jpeg' : ext}` } as any);
+      const res = await authApi.uploadAvatar(formData);
+      const updated = res.data.data.user;
+      if (updated) setUser(updated);
+    } catch {
+      Alert.alert('Error', 'No se pudo subir la foto. Intenta de nuevo.');
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -82,16 +135,32 @@ export const ProfileEditScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
           </View>
 
-          {/* Avatar preview */}
+          {/* Avatar */}
           <View style={styles.avatarSection}>
-            <LinearGradient
-              colors={[Colors.purple, Colors.purpleDark]}
-              style={styles.avatar}
-            >
-              <Text style={styles.avatarText}>
-                {name.split(' ').map((n) => n[0]).join('').toUpperCase() || '?'}
-              </Text>
-            </LinearGradient>
+            <TouchableOpacity onPress={handlePickAvatar} activeOpacity={0.8} style={styles.avatarTouchable}>
+              <LinearGradient
+                colors={['#FACC15', '#EC4899', '#A855F7']}
+                style={styles.avatar}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+                ) : (
+                  <LinearGradient colors={[Colors.purple, Colors.purpleDark]} style={styles.avatarImg}>
+                    <Text style={styles.avatarText}>
+                      {name.split(' ').map((n) => n[0]).join('').toUpperCase() || '?'}
+                    </Text>
+                  </LinearGradient>
+                )}
+              </LinearGradient>
+              <View style={styles.avatarEditBadge}>
+                {avatarLoading
+                  ? <ActivityIndicator size="small" color="white" />
+                  : <Text style={{ fontSize: 14 }}>📷</Text>
+                }
+              </View>
+            </TouchableOpacity>
             <Text style={styles.avatarHint}>@{user?.username}</Text>
           </View>
 
@@ -205,15 +274,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
+  avatarTouchable: {
+    position: 'relative',
+    marginBottom: 10,
+  },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 3,
+  },
+  avatarImg: {
+    flex: 1,
+    borderRadius: 41,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: Colors.yellow,
-    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#4C1D95',
+    borderWidth: 2,
+    borderColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarText: {
     color: Colors.white,

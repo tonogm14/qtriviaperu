@@ -53,6 +53,12 @@ export const authApi = {
     api.get('/api/auth/me'),
   updateMe: (data: { name?: string; phone?: string }) =>
     api.put('/api/auth/me', data),
+  googleLogin: (accessToken: string) =>
+    api.post<{ data: { token: string; user: any } }>('/api/auth/google', { accessToken }),
+  uploadAvatar: (formData: FormData) =>
+    api.post<{ data: { avatarUrl: string; user: any } }>('/api/auth/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   registerPushToken: (token: string) =>
     api.post('/api/users/push-token', { token }),
   myStats: (userId: string) =>

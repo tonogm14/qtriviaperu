@@ -111,12 +111,14 @@ export async function updateUserProfile(
     name?: string;
     phone?: string;
     password?: string;
+    avatarUrl?: string;
   }
 ): Promise<SafeUser> {
   const updateData: Partial<User> = {};
 
   if (data.name) updateData.name = data.name;
   if (data.phone) updateData.phone = data.phone;
+  if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
   if (data.password) {
     updateData.password = await bcrypt.hash(data.password, 12);
   }
@@ -131,4 +133,50 @@ export async function updateUserProfile(
   logActivity({ userId: id, type: actionType, action: actionLabel });
 
   return sanitizeUser(user);
+}
+
+export async function loginOrRegisterWithGoogle(googleUser: {
+  email: string;
+  name: string;
+  picture?: string;
+}): Promise<{ token: string; user: SafeUser }> {
+  let user = await prisma.user.findUnique({ where: { email: googleUser.email.toLowerCase() } });
+
+  if (!user) {
+    // Generate a unique username from name
+    const base = googleUser.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .slice(0, 20) || 'user';
+    let username = base;
+    let suffix = 1;
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${base}${suffix++}`;
+    }
+
+    user = await prisma.user.create({
+      data: {
+        email: googleUser.email.toLowerCase(),
+        name: googleUser.name,
+        username,
+        password: await bcrypt.hash(Math.random().toString(36), 12),
+        avatarUrl: googleUser.picture ?? null,
+      },
+    });
+
+    logActivity({ userId: user.id, type: 'register', action: 'Cuenta creada vía Google' });
+  } else {
+    // Update avatar from Google if user has none
+    if (!user.avatarUrl && googleUser.picture) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { avatarUrl: googleUser.picture },
+      });
+    }
+    logActivity({ userId: user.id, type: 'login', action: 'Inicio de sesión vía Google' });
+  }
+
+  const safeUser = sanitizeUser(user);
+  const token = generateToken(safeUser);
+  return { token, user: safeUser };
 }
