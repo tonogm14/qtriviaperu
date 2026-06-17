@@ -154,6 +154,31 @@ export const useSetGameQuestions = () => {
   })
 }
 
+export const useInviteCodes = (gameId: string) =>
+  useQuery({
+    queryKey: ['invite-codes', gameId],
+    queryFn: () => gamesApi.listInviteCodes(gameId).then(r => r.data.data),
+    enabled: !!gameId && gameId !== 'new',
+  })
+
+export const useGenerateInviteCodes = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { count?: number; label?: string; userEmail?: string } }) =>
+      gamesApi.generateInviteCodes(id, data),
+    onSuccess: (_d, { id }) => qc.invalidateQueries({ queryKey: ['invite-codes', id] }),
+  })
+}
+
+export const useDeleteInviteCode = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ gameId, codeId }: { gameId: string; codeId: string }) =>
+      gamesApi.deleteInviteCode(gameId, codeId),
+    onSuccess: (_d, { gameId }) => qc.invalidateQueries({ queryKey: ['invite-codes', gameId] }),
+  })
+}
+
 export const useGameEntries = (gameId: string, search?: string) =>
   useQuery({
     queryKey: ['game-entries', gameId, search ?? ''],

@@ -17,6 +17,7 @@ import { ShopCartScreen } from '../screens/wallet/ShopCartScreen';
 import { ShopCheckoutScreen } from '../screens/wallet/ShopCheckoutScreen';
 import { MyOrdersScreen } from '../screens/wallet/MyOrdersScreen';
 import { OrderDetailScreen } from '../screens/wallet/OrderDetailScreen';
+import { CompleteProfileScreen } from '../screens/auth/CompleteProfileScreen';
 import { JuvTabBar } from '../components/JuvTabBar';
 import { useStore } from '../store/useStore';
 import { track } from '../services/analytics';
@@ -26,6 +27,7 @@ export type MainStackParamList = {
   Leaderboard: undefined;
   Profile: undefined;
   ProfileEdit: undefined;
+  CompleteProfile: undefined;
   Upcoming: undefined;
   Lobby: { gameId?: string; scheduledAt?: string; prize?: number } | undefined;
   Live: { gameId?: string } | undefined;
@@ -80,8 +82,14 @@ const TabBarController: React.FC<{ currentRoute: string }> = ({ currentRoute }) 
 };
 
 export const MainNavigator: React.FC = () => {
-  const { setActiveTab } = useStore();
+  const { setActiveTab, needsProfileCompletion } = useStore();
   const [currentRoute, setCurrentRoute] = useState('Dashboard');
+
+  React.useEffect(() => {
+    if (!needsProfileCompletion) return;
+    const timer = setTimeout(() => navigate('CompleteProfile'), 100);
+    return () => clearTimeout(timer);
+  }, [needsProfileCompletion]);
 
   return (
     <View style={styles.container}>
@@ -136,6 +144,7 @@ export const MainNavigator: React.FC = () => {
         <Stack.Screen name="Prizes" component={PrizesScreen} />
         <Stack.Screen name="EventCode" component={EventCodeScreen} />
         <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+        <Stack.Screen name="CompleteProfile" component={CompleteProfileScreen} options={{ gestureEnabled: false }} />
         <Stack.Screen name="Shop" component={ShopScreen} />
         <Stack.Screen name="ShopCart" component={ShopCartScreen} />
         <Stack.Screen name="ShopCheckout" component={ShopCheckoutScreen} />

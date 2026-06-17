@@ -28,11 +28,17 @@ export const avatarUpload = multer({
   },
 }).single('avatar');
 
+const passwordSchema = z.string()
+  .min(8, 'La contraseña debe tener al menos 8 caracteres')
+  .regex(/[A-Z]/, 'Debe tener al menos una letra mayúscula')
+  .regex(/[0-9]/, 'Debe tener al menos un número')
+  .regex(/[^a-zA-Z0-9]/, 'Debe tener al menos un carácter especial');
+
 const registerSchema = z.object({
   name: z.string().min(2).max(100),
   email: z.string().email(),
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
-  password: z.string().min(8),
+  password: passwordSchema,
   phone: z.string().optional(),
 });
 
@@ -48,7 +54,8 @@ const recoverSchema = z.object({
 const updateProfileSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   phone: z.string().optional(),
-  password: z.string().min(8).optional(),
+  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/).optional(),
+  password: passwordSchema.optional(),
 });
 
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {

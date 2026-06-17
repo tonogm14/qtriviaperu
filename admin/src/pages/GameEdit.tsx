@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Save, X, Plus, Trash2, Search, RefreshCw, Repeat2, Heart, Crown, Star, ChevronDown, ChevronUp, Radio, Copy, Tv2, GripVertical } from 'lucide-react'
+import { Save, X, Plus, Trash2, Search, RefreshCw, Repeat2, Heart, Crown, Star, ChevronDown, ChevronUp, Radio, Copy, Tv2, GripVertical, Zap, Key, Trash } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select, Textarea } from '../components/ui/Input'
 import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
-import { useGame, useCreateGame, useUpdateGame, useQuestions, useSetGameQuestions, useCreateQuestion, useGameStream, useCreateStream, useDeleteStream } from '../api/hooks'
+import { useGame, useCreateGame, useUpdateGame, useQuestions, useSetGameQuestions, useCreateQuestion, useGameStream, useCreateStream, useDeleteStream, useInviteCodes, useGenerateInviteCodes, useDeleteInviteCode } from '../api/hooks'
+import type { InviteCode } from '../api/client'
 import type { Question, GameType, WinnerMode, PrizeSlot, PrizeMode } from '../types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -193,6 +194,9 @@ export function GameEdit() {
   const { data: streamData, refetch: refetchStream } = useGameStream(isNew ? '' : id!)
   const createStream = useCreateStream()
   const deleteStream = useDeleteStream()
+  const { data: inviteCodes = [], refetch: refetchCodes } = useInviteCodes(isNew ? '' : id!)
+  const generateCodes = useGenerateInviteCodes()
+  const deleteCode = useDeleteInviteCode()
   const [copiedKey, setCopiedKey] = useState<'key' | 'rtmp' | 'url' | null>(null)
 
   const copyToClipboard = (text: string, field: 'key' | 'rtmp' | 'url') => {
@@ -237,6 +241,11 @@ export function GameEdit() {
   const [prizeImage, setPrizeImage] = useState<string | null>(null)
   const [prizeImageFile, setPrizeImageFile] = useState<File | null>(null)
   const [prizeImageUploading, setPrizeImageUploading] = useState(false)
+  const [recurringMode, setRecurringMode] = useState<'DAILY' | 'CONTINUOUS'>('DAILY')
+  const [requiresCode, setRequiresCode] = useState(false)
+  const [newCodeLabel, setNewCodeLabel] = useState('')
+  const [newCodeEmail, setNewCodeEmail] = useState('')
+  const [codeGenError, setCodeGenError] = useState('')
 
   const [warmUpQuestionId, setWarmUpQuestionId] = useState<string | null>(null)
   const [warmUpQuestion, setWarmUpQuestion] = useState<Question | null>(null)
@@ -280,6 +289,8 @@ export function GameEdit() {
       if ((existing as any).prizeTitle) setPrizeTitle((existing as any).prizeTitle)
       if ((existing as any).prizeDescription) setPrizeDescription((existing as any).prizeDescription)
       if ((existing as any).prizeImage) setPrizeImage((existing as any).prizeImage)
+      if ((existing as any).recurringMode) setRecurringMode((existing as any).recurringMode)
+      setRequiresCode(!!(existing as any).requiresCode)
       setFormReady(true)
     }
   }, [existing, formReady])
@@ -346,9 +357,16 @@ export function GameEdit() {
       prizeTitle: prizeType === 'PHYSICAL' ? (prizeTitle.trim() || null) : null,
       prizeDescription: prizeType === 'PHYSICAL' ? (prizeDescription.trim() || null) : null,
     }
+    payload.requiresCode = requiresCode
     if (isRecurring) {
-      payload.recurringTime = form.recurringTime
-      payload.scheduledAt = `${form.date}T${form.recurringTime}:00-05:00`
+      payload.recurringMode = recurringMode
+      if (recurringMode === 'DAILY') {
+        payload.recurringTime = form.recurringTime
+        payload.scheduledAt = `${form.date}T${form.recurringTime}:00-05:00`
+      } else {
+        // CONTINUOUS: just keep the date/time for the first run
+        payload.scheduledAt = `${form.date}T${form.time}:00-05:00`
+      }
       if (gameType !== 'FREE') payload.entryFee = form.entryFee
     } else {
       payload.scheduledAt = `${form.date}T${form.time}:00-05:00`
@@ -445,8 +463,11 @@ export function GameEdit() {
       )}
       {isRecurring && (
         <div className="alert alert-info" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Repeat2 size={14} />
-          Juego <strong>recurrente diario</strong> — configura la hora y las preguntas. Se resetea automáticamente cada día.
+          {recurringMode === 'CONTINUOUS' ? <Zap size={14} /> : <Repeat2 size={14} />}
+          {recurringMode === 'CONTINUOUS'
+            ? <span>Juego <strong>continuo</strong> — al terminar una partida se crea la siguiente automáticamente de inmediato.</span>
+            : <span>Juego <strong>recurrente diario</strong> — configura la hora y las preguntas. Se resetea automáticamente cada día.</span>
+          }
         </div>
       )}
 
@@ -461,12 +482,42 @@ export function GameEdit() {
               <Input label="Título" placeholder="Ej. Trivia Gratis · 6PM" value={form.title}
                 onChange={e => upd('title', e.target.value)} hint="Visible en la app móvil" />
               {isRecurring ? (
-                <div className="form-grid-2">
-                  <Input label="Fecha próxima sesión" type="date" value={form.date}
-                    onChange={e => upd('date', e.target.value)} hint="Sobreescribe la fecha calculada automáticamente" />
-                  <Input label="Hora diaria (Lima · GMT-5)" type="time" value={form.recurringTime}
-                    onChange={e => upd('recurringTime', e.target.value)} hint="Se mostrará cada día a esta hora" />
-                </div>
+                <>
+                  {/* Recurring mode selector */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    <label className="input-label" style={{ margin: 0, alignSelf: 'center' }}>Modo recurrente</label>
+                    <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                      {(['DAILY', 'CONTINUOUS'] as const).map(m => (
+                        <button key={m} type="button" onClick={() => setRecurringMode(m)}
+                          style={{
+                            padding: '5px 14px', borderRadius: 999, border: '1.5px solid',
+                            fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                            borderColor: recurringMode === m ? 'var(--brand-500)' : 'var(--ink-200)',
+                            background: recurringMode === m ? 'var(--brand-50)' : 'transparent',
+                            color: recurringMode === m ? 'var(--brand-700)' : 'var(--ink-500)',
+                          }}
+                        >
+                          {m === 'DAILY' ? '📅 Horario fijo' : '⚡ Continuo'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {recurringMode === 'DAILY' ? (
+                    <div className="form-grid-2">
+                      <Input label="Fecha próxima sesión" type="date" value={form.date}
+                        onChange={e => upd('date', e.target.value)} hint="Sobreescribe la fecha calculada automáticamente" />
+                      <Input label="Hora diaria (Lima · GMT-5)" type="time" value={form.recurringTime}
+                        onChange={e => upd('recurringTime', e.target.value)} hint="Se mostrará cada día a esta hora" />
+                    </div>
+                  ) : (
+                    <div className="form-grid-2">
+                      <Input label="Primera sesión — Fecha" type="date" value={form.date}
+                        onChange={e => upd('date', e.target.value)} hint="Cuándo comienza la primera partida" />
+                      <Input label="Primera sesión — Hora (Lima)" type="time" value={form.time}
+                        onChange={e => upd('time', e.target.value)} hint="Después, las partidas se encadenan automáticamente" />
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="form-grid-2">
                   <Input label="Fecha" type="date" value={form.date} onChange={e => upd('date', e.target.value)} />
@@ -937,6 +988,135 @@ export function GameEdit() {
                 </div>
               ))}
             </div>
+          </Card>
+
+          {/* ── Invite codes ── */}
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <Key size={15} style={{ color: 'var(--brand-500)' }} />
+              <h3 className="section-title" style={{ margin: 0 }}>Acceso por código</h3>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: 'var(--ink-500)' }}>Requerir código</span>
+                <button type="button" onClick={() => setRequiresCode(v => !v)} style={{
+                  width: 40, height: 22, borderRadius: 999, border: 'none', cursor: 'pointer',
+                  background: requiresCode ? 'var(--brand-500)' : 'var(--ink-200)',
+                  position: 'relative', transition: 'background 0.2s',
+                }}>
+                  <span style={{
+                    position: 'absolute', top: 3, left: requiresCode ? 20 : 3,
+                    width: 16, height: 16, borderRadius: '50%', background: 'white',
+                    transition: 'left 0.2s',
+                  }} />
+                </button>
+              </div>
+            </div>
+
+            {requiresCode ? (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <p style={{ fontSize: 12, color: 'var(--ink-500)', margin: 0 }}>
+                  Genera un código único por invitado. Solo quienes tengan un código válido podrán unirse a este juego.
+                </p>
+
+                {/* Generate form */}
+                <div style={{ display: 'grid', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="input"
+                      placeholder="Nombre del invitado (opcional)"
+                      value={newCodeLabel}
+                      onChange={e => setNewCodeLabel(e.target.value)}
+                      style={{ flex: 1, padding: '8px 12px', border: '1.5px solid var(--ink-200)', borderRadius: 8, fontSize: 13 }}
+                    />
+                    <input
+                      className="input"
+                      placeholder="Email del comprador (auto-acceso)"
+                      value={newCodeEmail}
+                      onChange={e => { setNewCodeEmail(e.target.value); setCodeGenError('') }}
+                      style={{ flex: 1.2, padding: '8px 12px', border: '1.5px solid var(--ink-200)', borderRadius: 8, fontSize: 13 }}
+                      type="email"
+                    />
+                    <Button kind="primary" size="sm" icon={Plus}
+                      disabled={isNew || generateCodes.isPending}
+                      onClick={async () => {
+                        if (!id) return
+                        setCodeGenError('')
+                        try {
+                          await generateCodes.mutateAsync({
+                            id,
+                            data: {
+                              count: 1,
+                              label: newCodeLabel.trim() || undefined,
+                              userEmail: newCodeEmail.trim() || undefined,
+                            },
+                          })
+                          setNewCodeLabel('')
+                          setNewCodeEmail('')
+                        } catch (e: any) {
+                          setCodeGenError(e?.response?.data?.error ?? 'Error al generar código.')
+                        }
+                      }}
+                    >
+                      {isNew ? 'Guarda primero' : 'Generar código'}
+                    </Button>
+                  </div>
+                  {newCodeEmail.trim() && (
+                    <p style={{ fontSize: 11, color: 'var(--brand-600)', margin: 0 }}>
+                      ⚡ Con email: el usuario será inscrito automáticamente al juego sin necesidad de ingresar el código.
+                    </p>
+                  )}
+                  {codeGenError && <p style={{ fontSize: 12, color: 'var(--red-500,#ef4444)', margin: 0 }}>{codeGenError}</p>}
+                </div>
+
+                {/* Codes list */}
+                {(inviteCodes as InviteCode[]).length === 0 ? (
+                  <p style={{ fontSize: 12, color: 'var(--ink-400)', textAlign: 'center', padding: '12px 0' }}>
+                    No hay códigos generados aún.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: 6 }}>
+                    {(inviteCodes as InviteCode[]).map(c => (
+                      <div key={c.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                        background: c.usedById ? 'var(--ink-50)' : 'white',
+                        border: '1.5px solid', borderRadius: 8,
+                        borderColor: c.usedById ? 'var(--ink-150)' : 'var(--brand-200)',
+                      }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 14, letterSpacing: 1, color: c.usedById ? 'var(--ink-400)' : 'var(--ink-800)' }}>
+                          {c.code}
+                        </span>
+                        {c.label && <span style={{ fontSize: 12, color: 'var(--ink-500)' }}>· {c.label}</span>}
+                        <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700,
+                          color: c.usedById ? '#10B981' : 'var(--ink-400)',
+                          background: c.usedById ? 'rgba(16,185,129,0.08)' : 'transparent',
+                          padding: c.usedById ? '2px 8px' : '0', borderRadius: 999,
+                        }}>
+                          {c.usedById ? `✓ usado por @${c.usedByUsername ?? c.usedById}` : 'disponible'}
+                        </span>
+                        <button type="button"
+                          disabled={!!c.usedById || deleteCode.isPending}
+                          onClick={() => id && deleteCode.mutate({ gameId: id, codeId: c.id })}
+                          style={{ background: 'none', border: 'none', cursor: c.usedById ? 'default' : 'pointer', color: c.usedById ? 'var(--ink-200)' : 'var(--red-500,#ef4444)', padding: 4 }}
+                          title={c.usedById ? 'No se puede eliminar (ya fue usado)' : 'Eliminar código'}
+                        >
+                          <Trash size={13} />
+                        </button>
+                        <button type="button"
+                          onClick={() => navigator.clipboard.writeText(c.code)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-400)', padding: 4 }}
+                          title="Copiar código"
+                        >
+                          <Copy size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p style={{ fontSize: 12, color: 'var(--ink-400)', margin: 0 }}>
+                Acceso libre — cualquier usuario puede unirse sin código. Activa la opción para habilitar códigos de invitación individuales.
+              </p>
+            )}
           </Card>
         </div>
 

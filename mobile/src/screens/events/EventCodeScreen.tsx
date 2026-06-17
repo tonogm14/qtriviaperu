@@ -69,12 +69,17 @@ export const EventCodeScreen: React.FC<Props> = ({ navigation, route }) => {
     setLoading(true);
     setError('');
     try {
-      await gamesApi.join(gameId);
+      await gamesApi.join(gameId, code.trim().toUpperCase());
       setAlreadyJoined(true);
     } catch (e: any) {
       const msg = e?.response?.data?.error ?? '';
-      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('ya')) {
+      const errCode = e?.response?.data?.code ?? '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('ya te') || errCode === 'ALREADY_JOINED') {
         setAlreadyJoined(true);
+      } else if (errCode === 'INVALID_CODE') {
+        setError('Código inválido. Verifica que lo copiaste correctamente.');
+      } else if (errCode === 'CODE_ALREADY_USED') {
+        setError('Este código ya fue usado por otra persona.');
       } else {
         setError('Código no válido. Contacta al organizador para obtener acceso.');
       }

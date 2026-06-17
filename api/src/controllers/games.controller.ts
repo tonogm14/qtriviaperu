@@ -79,6 +79,9 @@ const createGameSchema = z.object({
   title: z.string().min(3).max(200),
   type: z.nativeEnum(GameType).default(GameType.SPECIAL),
   scheduledAt: z.coerce.date().optional(),
+  recurringTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  recurringMode: z.enum(['DAILY', 'CONTINUOUS']).default('DAILY'),
+  requiresCode: z.boolean().default(false),
   prize: z.number().positive(),
   entryFee: z.number().min(0).default(0),
   maxQuestions: z.number().int().min(1).max(50).default(12),
@@ -101,6 +104,8 @@ const updateGameSchema = z.object({
   type: z.nativeEnum(GameType).optional(),
   scheduledAt: z.coerce.date().optional(),
   recurringTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+  recurringMode: z.enum(['DAILY', 'CONTINUOUS']).optional(),
+  requiresCode: z.boolean().optional(),
   prize: z.number().min(0).optional(),
   entryFee: z.number().min(0).optional(),
   maxQuestions: z.number().int().min(1).max(50).optional(),
@@ -197,14 +202,20 @@ export async function createGame(req: Request, res: Response, next: NextFunction
   try {
     const body = createGameSchema.parse(req.body);
     const { prizeSlots, ...rest } = body;
-    const scheduledAt = rest.scheduledAt ?? new Date();
     // Only FREE games are recurring — all other types are one-off manual events
     const isRecurring = rest.type === GameType.FREE;
+    // CONTINUOUS mode doesn't need a fixed time; use now if no scheduledAt provided
+    const scheduledAt = rest.scheduledAt ?? new Date();
+    // DAILY mode with recurringTime: compute next occurrence
+    const computedScheduledAt =
+      isRecurring && rest.recurringMode === 'DAILY' && rest.recurringTime && !rest.scheduledAt
+        ? getNextOccurrenceUTC(rest.recurringTime)
+        : scheduledAt;
+
     const game = await prisma.game.create({
       data: {
         ...rest,
-        scheduledAt,
-        type: rest.type,
+        scheduledAt: computedScheduledAt,
         isRecurring,
         prizeSlots: prizeSlots !== undefined ? (prizeSlots ?? Prisma.JsonNull) : undefined,
       },
@@ -228,11 +239,15 @@ export async function updateGame(req: Request, res: Response, next: NextFunction
     if (body.type !== undefined) {
       data.isRecurring = body.type === GameType.FREE;
     }
-    // For FREE recurring games updating time: recompute scheduledAt
-    if (body.recurringTime) {
+    // DAILY mode with recurringTime: recompute scheduledAt
+    if (body.recurringTime && body.recurringMode !== 'CONTINUOUS') {
       if (!body.scheduledAt) {
         data.scheduledAt = getNextOccurrenceUTC(body.recurringTime);
       }
+    }
+    // CONTINUOUS mode: clear recurringTime (not needed)
+    if (body.recurringMode === 'CONTINUOUS') {
+      data.recurringTime = null;
     }
 
     const game = await prisma.game.update({
@@ -298,10 +313,11 @@ export async function getMyEntry(req: AuthRequest, res: Response, next: NextFunc
   try {
     const gameId = param(req as Request, 'id');
     const userId = req.user!.id;
-    const entry = await prisma.gameEntry.findUnique({
-      where: { userId_gameId: { userId, gameId } },
-    });
-    res.json({ data: { joined: !!entry } });
+    const [entry, inviteCode] = await Promise.all([
+      prisma.gameEntry.findUnique({ where: { userId_gameId: { userId, gameId } } }),
+      prisma.gameInviteCode.findFirst({ where: { gameId, usedById: userId } }),
+    ]);
+    res.json({ data: { joined: !!entry, hasInviteCode: !!inviteCode } });
   } catch (err) {
     next(err);
   }
@@ -310,11 +326,41 @@ export async function getMyEntry(req: AuthRequest, res: Response, next: NextFunc
 export async function joinGame(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const gameId = param(req as Request, 'id');
+    const userId = req.user!.id;
+
     if (isRegistrationClosed(gameId)) {
       res.status(400).json({ error: 'El registro para este juego ya cerró', code: 'GAME_NOT_JOINABLE' });
       return;
     }
-    await gameService.joinGame(req.user!.id, gameId);
+
+    // If game requires an invite code, validate it
+    const game = await prisma.game.findUnique({ where: { id: gameId }, select: { requiresCode: true } });
+    if (game?.requiresCode) {
+      const rawCode = (req.body?.code ?? '') as string;
+      const code = rawCode.trim().toUpperCase();
+      if (!code) {
+        res.status(400).json({ error: 'Se requiere un código de acceso', code: 'CODE_REQUIRED' });
+        return;
+      }
+      const inviteCode = await prisma.gameInviteCode.findUnique({ where: { code } });
+      if (!inviteCode || inviteCode.gameId !== gameId) {
+        res.status(400).json({ error: 'Código de acceso inválido', code: 'INVALID_CODE' });
+        return;
+      }
+      if (inviteCode.usedById && inviteCode.usedById !== userId) {
+        res.status(400).json({ error: 'Este código ya fue utilizado', code: 'CODE_ALREADY_USED' });
+        return;
+      }
+      // Mark code as used (idempotent for the same user)
+      if (!inviteCode.usedById) {
+        await prisma.gameInviteCode.update({
+          where: { id: inviteCode.id },
+          data: { usedById: userId, usedAt: new Date() },
+        });
+      }
+    }
+
+    await gameService.joinGame(userId, gameId);
     res.json({ data: { message: 'Te uniste al juego correctamente' } });
   } catch (err) {
     next(err);
@@ -471,6 +517,109 @@ export async function uploadPrizeImage(req: Request, res: Response, next: NextFu
     const imageUrl = `/uploads/prizes/${file.filename}`;
     await prisma.game.update({ where: { id: gameId }, data: { prizeImage: imageUrl } });
     res.json({ data: { prizeImage: imageUrl } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ─── Invite codes ─────────────────────────────────────────────────────────────
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 1, 0
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    if (i === 4) code += '-';
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export async function listInviteCodes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const gameId = param(req, 'id');
+    const codes = await prisma.gameInviteCode.findMany({
+      where: { gameId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        game: { select: { id: true } },
+      },
+    });
+    // Resolve usedBy usernames
+    const userIds = codes.filter(c => c.usedById).map(c => c.usedById!);
+    const users = userIds.length
+      ? await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, username: true } })
+      : [];
+    const userMap = Object.fromEntries(users.map(u => [u.id, u.username]));
+    res.json({ data: codes.map(c => ({ ...c, usedByUsername: c.usedById ? userMap[c.usedById] : null })) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function generateInviteCodes(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const gameId = param(req, 'id');
+    const { count = 1, label, userEmail } = z.object({
+      count: z.number().int().min(1).max(100).default(1),
+      label: z.string().max(100).optional(),
+      userEmail: z.string().email().optional(), // pre-assign to a specific user + auto-join
+    }).parse(req.body);
+
+    // Resolve user for pre-assignment
+    let preAssignedUserId: string | null = null;
+    if (userEmail) {
+      const user = await prisma.user.findUnique({ where: { email: userEmail.toLowerCase() } });
+      if (!user) {
+        res.status(404).json({ error: `No existe ningún usuario con el correo ${userEmail}`, code: 'USER_NOT_FOUND' });
+        return;
+      }
+      preAssignedUserId = user.id;
+    }
+
+    const created = [];
+    for (let i = 0; i < count; i++) {
+      let code = generateInviteCode();
+      while (await prisma.gameInviteCode.findUnique({ where: { code } })) {
+        code = generateInviteCode();
+      }
+      const record = await prisma.gameInviteCode.create({
+        data: {
+          gameId,
+          code,
+          label: label ?? null,
+          usedById: preAssignedUserId,
+          usedAt: preAssignedUserId ? new Date() : null,
+        },
+      });
+      created.push(record);
+    }
+
+    // Auto-join the user to the game if pre-assigned
+    if (preAssignedUserId) {
+      try {
+        await gameService.joinGame(preAssignedUserId, gameId);
+      } catch (e: any) {
+        // "already joined" is fine — just ignore
+        if (e?.code !== 'ALREADY_JOINED' && e?.message !== 'Ya te uniste a este juego') {
+          console.warn('[generateInviteCodes] auto-join failed:', e?.message);
+        }
+      }
+    }
+
+    res.status(201).json({ data: created });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteInviteCode(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const codeId = param(req, 'codeId');
+    const code = await prisma.gameInviteCode.findUnique({ where: { id: codeId } });
+    if (!code) { res.status(404).json({ error: 'Código no encontrado' }); return; }
+    if (code.usedById) { res.status(400).json({ error: 'No se puede eliminar un código ya utilizado' }); return; }
+    await prisma.gameInviteCode.delete({ where: { id: codeId } });
+    res.json({ data: { message: 'Código eliminado' } });
   } catch (err) {
     next(err);
   }

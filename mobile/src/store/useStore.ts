@@ -48,11 +48,13 @@ interface AppStore {
   authState: AuthState;
   token: string | null;
   user: User | null;
+  needsProfileCompletion: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (name: string, email: string, username: string, password: string) => Promise<void>;
   loginWithGoogle: (accessToken: string) => Promise<void>;
   setUser: (user: User) => void;
+  setNeedsProfileCompletion: (v: boolean) => void;
   loadUser: () => Promise<void>;
 
   // Game
@@ -102,6 +104,7 @@ export const useStore = create<AppStore>()(
       authState: 'unauthenticated',
       token: null,
       user: null,
+      needsProfileCompletion: false,
 
       login: async (email: string, password: string) => {
         const res = await authApi.login(email, password);
@@ -126,10 +129,11 @@ export const useStore = create<AppStore>()(
         const res = await authApi.googleLogin(accessToken);
         const { token, user } = res.data.data;
         await AsyncStorage.setItem('qtrivia_token', token);
-        set({ token, user, authState: 'authenticated', rank: user.rank ?? 0 });
+        set({ token, user, authState: 'authenticated', rank: user.rank ?? 0, needsProfileCompletion: !user.phone });
       },
 
       setUser: (user: User) => set({ user }),
+      setNeedsProfileCompletion: (v: boolean) => set({ needsProfileCompletion: v }),
 
       loadUser: async () => {
         try {
@@ -220,6 +224,7 @@ export const useStore = create<AppStore>()(
         user: state.user,
         authState: state.authState,
         rank: state.rank,
+        needsProfileCompletion: state.needsProfileCompletion,
       }),
     }
   )

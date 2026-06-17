@@ -142,8 +142,16 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
     }, 600);
   };
 
+  const passwordRules = [
+    { label: 'Mínimo 8 caracteres', ok: password.length >= 8 },
+    { label: 'Una letra mayúscula', ok: /[A-Z]/.test(password) },
+    { label: 'Un número', ok: /[0-9]/.test(password) },
+    { label: 'Un carácter especial (!@#$...)', ok: /[^a-zA-Z0-9]/.test(password) },
+  ];
+  const passwordValid = passwordRules.every((r) => r.ok);
+
   const canSubmit = !!(
-    name && email && username && password && termsAccepted && !loading && !emailError && !usernameError
+    name && email && username && password && passwordValid && termsAccepted && !loading && !emailError && !usernameError
   );
 
   const handleRegister = async () => {
@@ -155,8 +163,8 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       setEmailError('Ingresa un correo válido (ej: usuario@gmail.com).');
       return;
     }
-    if (password.length < 8) {
-      setPasswordError('La contraseña debe tener al menos 8 caracteres.');
+    if (!passwordValid) {
+      setPasswordError('La contraseña no cumple todos los requisitos.');
       return;
     }
 
@@ -172,7 +180,7 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
       const userDetail  = details.find((d) => d.field === 'username');
 
       if (emailDetail)  { setEmailError('Ingresa un correo válido (ej: usuario@gmail.com).'); return; }
-      if (passDetail)   { setPasswordError('La contraseña debe tener al menos 8 caracteres.'); return; }
+      if (passDetail)   { setPasswordError(passDetail.message || 'La contraseña no cumple todos los requisitos.'); return; }
       if (userDetail)   { setUsernameError('El usuario solo puede tener letras, números y guión bajo.'); return; }
 
       setError(
@@ -256,12 +264,26 @@ export const RegisterScreen: React.FC<Props> = ({ navigation }) => {
             {usernameError ? <Text style={styles.fieldError}>{usernameError}</Text> : null}
 
             <JuvPillInput
-              placeholder="Contraseña (mínimo 8 caracteres)"
+              placeholder="Contraseña"
               value={password}
               onChangeText={(v) => { setPassword(v); setPasswordError(''); }}
               secureTextEntry
               returnKeyType="done"
             />
+            {password.length > 0 && (
+              <View style={styles.passwordRules}>
+                {passwordRules.map((rule) => (
+                  <View key={rule.label} style={styles.passwordRule}>
+                    <Text style={[styles.passwordRuleIcon, rule.ok && styles.passwordRuleOk]}>
+                      {rule.ok ? '✓' : '·'}
+                    </Text>
+                    <Text style={[styles.passwordRuleText, rule.ok && styles.passwordRuleOk]}>
+                      {rule.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
             {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
 
             {/* Terms + Privacy checkbox */}
@@ -371,6 +393,30 @@ const styles = StyleSheet.create({
     marginTop: -6,
     marginBottom: 6,
     marginLeft: 4,
+  },
+  passwordRules: {
+    marginTop: -4,
+    marginBottom: 8,
+    paddingLeft: 4,
+    gap: 3,
+  },
+  passwordRule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  passwordRuleIcon: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.35)',
+    width: 14,
+  },
+  passwordRuleText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.35)',
+  },
+  passwordRuleOk: {
+    color: '#4ADE80',
   },
   termsRow: {
     flexDirection: 'row',

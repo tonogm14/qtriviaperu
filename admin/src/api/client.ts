@@ -76,6 +76,12 @@ export const gamesApi = {
     api.get<{ data: GameEntry[]; total: number }>(`/api/games/${id}/entries`, { params: search ? { search } : undefined }),
   log: (id: string) =>
     api.get<{ data: { game: any; events: GameEvent[]; entries: GameLogEntry[] } }>(`/api/games/${id}/log`),
+  listInviteCodes: (id: string) =>
+    api.get<{ data: InviteCode[] }>(`/api/games/${id}/invite-codes`),
+  generateInviteCodes: (id: string, data: { count?: number; label?: string; userEmail?: string }) =>
+    api.post<{ data: InviteCode[] }>(`/api/games/${id}/invite-codes/generate`, data),
+  deleteInviteCode: (gameId: string, codeId: string) =>
+    api.delete(`/api/games/${gameId}/invite-codes/${codeId}`),
 }
 
 export interface GameEntry {
@@ -89,6 +95,17 @@ export interface GameEntry {
   isAlive: boolean
   prize?: number | null
   joinedAt: string
+}
+
+export interface InviteCode {
+  id: string
+  gameId: string
+  code: string
+  label: string | null
+  usedById: string | null
+  usedByUsername: string | null
+  usedAt: string | null
+  createdAt: string
 }
 
 // ─── QUESTIONS API ────────────────────────────────────────────────────────────

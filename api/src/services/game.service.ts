@@ -268,13 +268,16 @@ export async function finishGame(gameId: string): Promise<{
   const winnerList = winners.map(w => ({ username: w.entry.user.username, prize: w.prize }));
 
   // Auto-create next occurrence only for FREE recurring games
-  if (game.isRecurring && game.recurringTime && game.type === 'FREE') {
+  if (game.isRecurring && game.type === 'FREE' && (game.recurringTime || (game as any).recurringMode === 'CONTINUOUS')) {
+    const recurringMode = (game as any).recurringMode ?? 'DAILY';
     const gameQuestions = await prisma.gameQuestion.findMany({
       where: { gameId },
       select: { questionId: true, order: true },
     });
     try {
-      const nextScheduledAt = getNextOccurrenceUTC(game.recurringTime);
+      const nextScheduledAt = recurringMode === 'CONTINUOUS'
+        ? new Date()
+        : getNextOccurrenceUTC(game.recurringTime!);
 
       // Prevent duplicate next occurrences (race condition guard)
       const alreadyExists = await prisma.game.findFirst({
@@ -290,7 +293,8 @@ export async function finishGame(gameId: string): Promise<{
           title: game.title,
           type: game.type,
           isRecurring: true,
-          recurringTime: game.recurringTime,
+          recurringTime: recurringMode === 'CONTINUOUS' ? null : game.recurringTime,
+          recurringMode,
           scheduledAt: nextScheduledAt,
           status: GameStatus.PENDING,
           prize: game.prize,
@@ -331,7 +335,9 @@ export async function cancelStuckLobby(gameId: string): Promise<void> {
 
   console.log(`[cancelStuckLobby] cancelled stuck LOBBY game → ${game.title} (${gameId})`);
 
-  if (!game.isRecurring || !game.recurringTime || game.type !== 'FREE') return;
+  const recurringMode = (game as any).recurringMode ?? 'DAILY';
+  if (!game.isRecurring || game.type !== 'FREE') return;
+  if (recurringMode === 'DAILY' && !game.recurringTime) return;
 
   try {
     const alreadyExists = await prisma.game.findFirst({
@@ -342,7 +348,7 @@ export async function cancelStuckLobby(gameId: string): Promise<void> {
     });
     if (alreadyExists) return;
 
-    const nextScheduledAt = getNextOccurrenceUTC(game.recurringTime);
+    const nextScheduledAt = recurringMode === 'CONTINUOUS' ? new Date() : getNextOccurrenceUTC(game.recurringTime!);
     const gameQuestions = await prisma.gameQuestion.findMany({
       where: { gameId },
       select: { questionId: true, order: true },
@@ -352,7 +358,8 @@ export async function cancelStuckLobby(gameId: string): Promise<void> {
         title: game.title,
         type: game.type,
         isRecurring: true,
-        recurringTime: game.recurringTime,
+        recurringTime: recurringMode === 'CONTINUOUS' ? null : game.recurringTime,
+        recurringMode,
         scheduledAt: nextScheduledAt,
         status: GameStatus.PENDING,
         prize: game.prize,

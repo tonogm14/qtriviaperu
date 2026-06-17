@@ -68,7 +68,9 @@ model Game {
   title           String
   type            GameType       @default(SPECIAL)
   isRecurring     Boolean        @default(false)
-  recurringTime   String?        // "HH:MM" in Lima time, only for recurring games
+  recurringTime   String?        // "HH:MM" in Lima time, only for DAILY recurring games
+  recurringMode   String         @default("DAILY") // DAILY | CONTINUOUS
+  requiresCode    Boolean        @default(false)   // users must enter an invite code to join
   scheduledAt     DateTime
   status          GameStatus     @default(PENDING)
   prize           Float
@@ -100,6 +102,7 @@ model Game {
   entries             GameEntry[]
   questions           GameQuestion[]
   events              GameEvent[]
+  inviteCodes         GameInviteCode[]
 }
 
 model GameEvent {
@@ -113,6 +116,19 @@ model GameEvent {
 
   @@index([gameId])
   @@index([createdAt])
+}
+
+model GameInviteCode {
+  id        String    @id @default(cuid())
+  gameId    String
+  code      String    @unique
+  label     String?   // optional: name/identifier of the intended recipient
+  usedById  String?   // userId who redeemed it
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
 }
 
 model Question {

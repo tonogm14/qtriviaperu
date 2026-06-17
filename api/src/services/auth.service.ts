@@ -110,6 +110,7 @@ export async function updateUserProfile(
   data: {
     name?: string;
     phone?: string;
+    username?: string;
     password?: string;
     avatarUrl?: string;
   }
@@ -119,6 +120,14 @@ export async function updateUserProfile(
   if (data.name) updateData.name = data.name;
   if (data.phone) updateData.phone = data.phone;
   if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
+  if (data.username) {
+    const newUsername = data.username.toLowerCase();
+    const existing = await prisma.user.findUnique({ where: { username: newUsername } });
+    if (existing && existing.id !== id) {
+      throw new AppError('Ese nombre de usuario ya está en uso', 400, 'USERNAME_TAKEN');
+    }
+    updateData.username = newUsername;
+  }
   if (data.password) {
     updateData.password = await bcrypt.hash(data.password, 12);
   }

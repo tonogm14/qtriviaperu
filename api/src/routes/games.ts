@@ -100,6 +100,11 @@ router.get( '/:id/stream', authenticate, requirePermission(PERMISSIONS.GAMES_REA
 router.post('/:id/stream', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), streamController.createStream);
 router.delete('/:id/stream', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), streamController.deleteStream);
 
+// Invite codes — admin only
+router.get('/:id/invite-codes',             authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.listInviteCodes as RequestHandler);
+router.post('/:id/invite-codes/generate',   authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.generateInviteCodes as RequestHandler);
+router.delete('/:id/invite-codes/:codeId',  authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.deleteInviteCode as RequestHandler);
+
 // Player-only routes (admins cannot join games as players)
 router.get('/:id/my-entry', authenticate, gamesController.getMyEntry as RequestHandler);
 router.post('/:id/join', authenticate, requireUser, gamesController.joinGame as RequestHandler);

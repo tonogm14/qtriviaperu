@@ -51,7 +51,7 @@ export const authApi = {
     api.post('/api/auth/recover', { email }),
   me: () =>
     api.get('/api/auth/me'),
-  updateMe: (data: { name?: string; phone?: string }) =>
+  updateMe: (data: { name?: string; phone?: string; username?: string }) =>
     api.put('/api/auth/me', data),
   googleLogin: (accessToken: string) =>
     api.post<{ data: { token: string; user: any } }>('/api/auth/google', { accessToken }),
@@ -71,8 +71,8 @@ export const gamesApi = {
     api.get('/api/games', { params }),
   get: (id: string) =>
     api.get(`/api/games/${id}`),
-  join: (id: string) =>
-    api.post(`/api/games/${id}/join`),
+  join: (id: string, code?: string) =>
+    api.post(`/api/games/${id}/join`, code ? { code } : {}),
   getMyEntry: (id: string) =>
     api.get(`/api/games/${id}/my-entry`),
 };

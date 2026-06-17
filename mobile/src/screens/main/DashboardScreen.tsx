@@ -370,6 +370,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [vipGame, setVipGame] = useState<any>(null);
   const [isJoined, setIsJoined] = useState(false);
   const [isVipJoined, setIsVipJoined] = useState(false);
+  const [hasVipInviteCode, setHasVipInviteCode] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -407,8 +408,10 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         try {
           const vipEntry = await gamesApi.getMyEntry(nextVip.id);
           setIsVipJoined(vipEntry.data.data.joined);
+          setHasVipInviteCode(vipEntry.data.data.hasInviteCode ?? false);
         } catch {
           setIsVipJoined(false);
+          setHasVipInviteCode(false);
         }
       }
     } catch (err: any) {
@@ -713,7 +716,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.participarText}>🔴 Entrar al juego VIP</Text>
               </View>
               <View style={styles.participarBadge}>
-                <Text style={styles.participarBadgeText}>EN CURSO</Text>
+                <Text style={styles.participarBadgeText}>JUEGO EN CURSO</Text>
               </View>
             </TouchableOpacity>
           ) : vipGame?.status === 'LIVE' && !isVipJoined ? (
@@ -729,7 +732,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.participarBadgeText}>EN VIVO</Text>
               </View>
             </TouchableOpacity>
-          ) : isVipJoined ? (
+          ) : (isVipJoined || hasVipInviteCode) ? (
             <View style={[styles.participarBtn, styles.participarJoined]}>
               <View style={styles.participarLeft}>
                 <Text style={[styles.participarText, { color: '#34D399' }]}>✓ Acceso Habilitado</Text>
