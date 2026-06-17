@@ -371,6 +371,7 @@ export interface AppConfig {
   feeBCP: number
   feeInterbank: number
   termsAndConditions: string
+  yapePhone: string
 }
 
 export const configApi = {

@@ -5,9 +5,10 @@ import * as configController from '../controllers/config.controller';
 
 const router = Router();
 
-// Public — mobile app reads T&C and Privacy Policy without auth
+// Public — mobile app reads T&C, Privacy Policy, and payment config without auth
 router.get('/terms', configController.getTerms);
 router.get('/privacy', configController.getPrivacy);
+router.get('/payment', configController.getPaymentConfig);
 
 // Authenticated (regular users) — withdrawal settings
 router.get('/withdraw-config', authenticate, configController.getWithdrawConfig);

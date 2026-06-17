@@ -114,6 +114,18 @@ export const shopApi = {
   }) => api.post<{ data: { cartRef: string; orders: number } }>('/api/shop/cart-checkout', data),
   myOrders: () =>
     api.get<{ data: { merch: any[] } }>('/api/shop/my-orders'),
+  createYapeOrder: (data: {
+    items: { itemId: string; quantity: number }[];
+    recipientName: string;
+    dni: string;
+    phone: string;
+    address: string;
+    notes?: string;
+  }) =>
+    api.post<{ data: { cartRef: string; orderNumber: number; orders: number; checkoutUrl: string | null; culqiEnabled: boolean } }>(
+      '/api/shop/yape-order',
+      data
+    ),
 };
 
 // Config — public legal content
@@ -122,5 +134,7 @@ export const configApi = {
     api.get<{ data: { termsAndConditions: string } }>('/api/config/terms'),
   getPrivacy: () =>
     api.get<{ data: { privacyPolicy: string } }>('/api/config/privacy'),
+  getPayment: () =>
+    api.get<{ data: { yapePhone: string } }>('/api/config/payment'),
 };
 

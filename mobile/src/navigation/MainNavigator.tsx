@@ -17,6 +17,7 @@ import { ShopCartScreen } from '../screens/wallet/ShopCartScreen';
 import { ShopCheckoutScreen } from '../screens/wallet/ShopCheckoutScreen';
 import { MyOrdersScreen } from '../screens/wallet/MyOrdersScreen';
 import { OrderDetailScreen } from '../screens/wallet/OrderDetailScreen';
+import { YapePaymentScreen } from '../screens/wallet/YapePaymentScreen';
 import { CompleteProfileScreen } from '../screens/auth/CompleteProfileScreen';
 import { JuvTabBar } from '../components/JuvTabBar';
 import { useStore } from '../store/useStore';
@@ -37,6 +38,7 @@ export type MainStackParamList = {
   Shop: undefined;
   ShopCart: undefined;
   ShopCheckout: undefined;
+  YapePayment: { orderData: any; total: number };
   MyOrders: undefined;
   OrderDetail: { order: any };
 };
@@ -115,6 +117,7 @@ export const MainNavigator: React.FC = () => {
                 Shop: 'shop',
                 ShopCart: 'shop',
                 ShopCheckout: 'shop',
+                YapePayment: 'shop',
                 MyOrders: 'shop',
                 OrderDetail: 'shop',
                 Profile: 'profile',
@@ -148,6 +151,7 @@ export const MainNavigator: React.FC = () => {
         <Stack.Screen name="Shop" component={ShopScreen} />
         <Stack.Screen name="ShopCart" component={ShopCartScreen} />
         <Stack.Screen name="ShopCheckout" component={ShopCheckoutScreen} />
+        <Stack.Screen name="YapePayment" component={YapePaymentScreen} />
         <Stack.Screen name="MyOrders" component={MyOrdersScreen} />
         <Stack.Screen name="OrderDetail" component={OrderDetailScreen} />
       </Stack.Navigator>

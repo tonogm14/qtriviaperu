@@ -20,11 +20,10 @@ interface Props {
   navigation: any;
 }
 
-type PayMethod = 'yape' | 'plin' | 'card';
+type PayMethod = 'yapeplin' | 'card';
 
 const PAY_METHODS: { id: PayMethod; label: string; color: string; badge: string }[] = [
-  { id: 'yape', label: 'Yape', color: '#892BE5', badge: 'Inmediato' },
-  { id: 'plin', label: 'Plin', color: '#00D4D6', badge: 'Inmediato' },
+  { id: 'yapeplin', label: 'Yape / Plin', color: '#892BE5', badge: 'Escanea y paga' },
   { id: 'card', label: 'Tarjeta', color: '#FACC15', badge: 'Pendiente' },
 ];
 
@@ -72,7 +71,7 @@ export const ShopCheckoutScreen: React.FC<Props> = ({ navigation }) => {
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
-  const [method, setMethod] = useState<PayMethod>('yape');
+  const [method, setMethod] = useState<PayMethod>('yapeplin');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -81,12 +80,26 @@ export const ShopCheckoutScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleOrder = async () => {
     if (!canSubmit) return;
+    if (method === 'yapeplin') {
+      navigation.navigate('YapePayment', {
+        orderData: {
+          items: cart.map((i) => ({ itemId: i.id, quantity: i.quantity })),
+          recipientName: recipientName.trim(),
+          dni: dni.trim(),
+          phone: phone.trim(),
+          address: address.trim(),
+          notes: notes.trim() || undefined,
+        },
+        total,
+      });
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       await shopApi.cartCheckout({
         items: cart.map((i) => ({ itemId: i.id, quantity: i.quantity })),
-        method,
+        method: 'card',
         recipientName: recipientName.trim(),
         dni: dni.trim(),
         phone: phone.trim(),
@@ -96,7 +109,8 @@ export const ShopCheckoutScreen: React.FC<Props> = ({ navigation }) => {
       clearCart();
       navigation.replace('MyOrders');
     } catch (e: any) {
-      setError(e?.response?.data?.error || 'Error al procesar el pedido. Intenta de nuevo.');
+      const msg = e?.response?.data?.error ?? e?.message ?? 'Error al procesar el pedido';
+      setError(msg);
     } finally {
       setLoading(false);
     }

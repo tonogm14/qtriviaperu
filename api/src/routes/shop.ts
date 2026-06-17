@@ -11,6 +11,8 @@ router.get('/my-orders',       authenticate, requireUser, shopController.myOrder
 router.post('/buy-lives',      authenticate, requireUser, shopController.buyLives as RequestHandler);
 router.post('/order-merch',    authenticate, requireUser, shopController.orderMerch as RequestHandler);
 router.post('/cart-checkout',  authenticate, requireUser, shopController.cartCheckout as RequestHandler);
+router.post('/yape-order',     authenticate, requireUser, shopController.createYapeOrder as RequestHandler);
+router.post('/culqi-webhook',  shopController.culqiWebhook as RequestHandler);
 
 // Admin CRUD — life packs
 router.get('/admin/packs',        authenticate, requirePermission(PERMISSIONS.SHOP_READ),  shopController.listPacksAdmin as RequestHandler);

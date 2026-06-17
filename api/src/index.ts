@@ -61,7 +61,10 @@ app.use(
 );
 
 app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({
+  limit: '5mb',
+  verify: (req: any, _res, buf) => { req.rawBody = buf.toString(); },
+}));
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 

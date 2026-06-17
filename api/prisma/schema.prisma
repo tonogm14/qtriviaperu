@@ -316,6 +316,7 @@ model Order {
   dni           String?
   notes         String?
   cartRef       String?     // groups orders placed in the same cart checkout
+  culqiOrderId  String?     // Culqi order ID for payment tracking
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   user          User        @relation(fields: [userId], references: [id])
@@ -352,6 +353,7 @@ model AppConfig {
   termsAndConditions String @default("")
   privacyPolicy    String   @default("")
   autoCloseRegistration Boolean @default(true)
+  yapePhone        String   @default("")
   updatedAt        DateTime @updatedAt
 }
 

@@ -304,6 +304,7 @@ export function Settings() {
   const [feePlin, setFeePlin] = useState(0)
   const [feeBCP, setFeeBCP] = useState(5)
   const [feeInterbank, setFeeInterbank] = useState(5)
+  const [yapePhone, setYapePhone] = useState('')
 
   // Populate form when config loads from DB
   useEffect(() => {
@@ -323,6 +324,7 @@ export function Settings() {
     setFeePlin(config.feePlin)
     setFeeBCP(config.feeBCP)
     setFeeInterbank(config.feeInterbank)
+    setYapePhone(config.yapePhone ?? '')
   }, [config])
 
   // Team
@@ -337,6 +339,7 @@ export function Settings() {
         defaultPrize, defaultQuestions, defaultTime, pushBefore, autoAdvance, chatModeration,
         autoCloseRegistration,
         minWithdraw, feeYape, feePlin, feeBCP, feeInterbank,
+        yapePhone,
         termsAndConditions,
         privacyPolicy,
       } as any)
@@ -442,6 +445,9 @@ export function Settings() {
         <Card>
           <h3 className="section-title">Configuración de retiros</h3>
           <div style={{ display: 'grid', gap: 0 }}>
+            <SettingRow title="Número Yape / Plin" sub="Número de teléfono que aparece en la pantalla de pago de la app">
+              <input className="input" type="tel" style={{ width: 160 }} placeholder="9XXXXXXXX" value={yapePhone} onChange={(e) => setYapePhone(e.target.value)} />
+            </SettingRow>
             <SettingRow title="Retiro mínimo (S/)" sub="Monto mínimo para solicitar retiro">
               <input className="input" type="number" style={{ width: 120 }} value={minWithdraw} onChange={(e) => setMinWithdraw(Number(e.target.value))} />
             </SettingRow>

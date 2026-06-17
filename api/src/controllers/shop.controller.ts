@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
 import { logActivity } from '../services/activity.service';
 import { sendPushToUser } from '../services/pushNotifications';
+import * as culqi from '../services/culqi.service';
 
 const prisma = new PrismaClient();
 
@@ -629,5 +630,139 @@ export async function exportSales(req: Request, res: Response, next: NextFunctio
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="qtrivia_ventas_${type}${dateLabel}.csv"`);
     res.send('﻿' + rows.join('\n'));
+  } catch (err) { next(err) }
+}
+
+// ─── Yape/Plin order via Culqi ────────────────────────────────────────────────
+
+const yapeOrderSchema = z.object({
+  items: z.array(z.object({
+    itemId:   z.string(),
+    quantity: z.number().int().min(1).max(10),
+  })).min(1),
+  recipientName: z.string().min(2),
+  dni:           z.string().min(6),
+  phone:         z.string().min(7),
+  address:       z.string().min(5),
+  notes:         z.string().optional(),
+});
+
+export async function createYapeOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { items, recipientName, dni, phone, address, notes } = yapeOrderSchema.parse(req.body);
+    const userId = req.user!.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new AppError('Usuario no encontrado', 404, 'NOT_FOUND');
+
+    const seq = await prisma.orderSeq.create({ data: {} });
+    const orderNumber = seq.id;
+    const cartRef = `CART-${orderNumber}`;
+    const createdOrders: any[] = [];
+
+    await prisma.$transaction(async (tx) => {
+      for (const { itemId, quantity } of items) {
+        const item = await tx.merchItem.findUnique({ where: { id: itemId } });
+        if (!item || !item.active) throw new AppError(`Item ${itemId} no disponible`, 404, 'NOT_FOUND');
+        if (item.stock !== -1 && item.stock < quantity) throw new AppError(`Stock insuficiente para ${item.name}`, 400, 'OUT_OF_STOCK');
+        if (item.stock !== -1) {
+          await tx.merchItem.update({ where: { id: itemId }, data: { stock: { decrement: quantity } } });
+        }
+        const total = item.price * quantity;
+        const order = await tx.order.create({
+          data: {
+            userId, itemId, quantity, total, method: 'yape', status: OrderStatus.PENDING,
+            orderNumber: createdOrders.length === 0 ? orderNumber : null,
+            address, phone, recipientName, dni, notes, cartRef,
+          },
+          include: { item: { select: { id: true, name: true, emoji: true, price: true } } },
+        });
+        createdOrders.push(order);
+      }
+    });
+
+    const grandTotal = createdOrders.reduce((s: number, o: any) => s + o.total, 0);
+    let checkoutUrl: string | null = null;
+    let culqiOrderId: string | null = null;
+
+    if (culqi.culqiEnabled()) {
+      try {
+        const nameParts = recipientName.trim().split(' ');
+        const culqiOrder = await culqi.createCulqiOrder({
+          amountSoles: grandTotal,
+          orderNumber: cartRef,
+          description: `Pedido QTrivia ${cartRef}`,
+          email: user.email,
+          firstName: nameParts[0] ?? recipientName,
+          lastName: nameParts.slice(1).join(' ') || '-',
+          phone,
+        });
+        culqiOrderId = culqiOrder.id;
+        checkoutUrl = culqiOrder.checkout_url;
+        await prisma.order.updateMany({
+          where: { cartRef },
+          data: { culqiOrderId },
+        });
+      } catch (culqiErr: any) {
+        console.error('[Culqi] createOrder failed:', culqiErr?.message);
+        // Fall through — order exists in DB, just no Culqi checkout link
+      }
+    }
+
+    logActivity({ userId, type: 'order_merch', action: `Yape pedido: ${createdOrders.length} items`, meta: { cartRef, orderNumber } });
+    res.json({ data: { cartRef, orderNumber, orders: createdOrders.length, checkoutUrl, culqiOrderId, culqiEnabled: culqi.culqiEnabled() } });
+  } catch (err) { next(err) }
+}
+
+// ─── Culqi webhook ────────────────────────────────────────────────────────────
+
+export async function culqiWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rawBody: string = (req as any).rawBody ?? JSON.stringify(req.body);
+    const signature = req.headers['x-culqi-signature'] as string | undefined;
+
+    if (culqi.culqiEnabled() && signature) {
+      if (!culqi.verifyWebhookSignature(rawBody, signature)) {
+        res.status(401).json({ error: 'Firma inválida' });
+        return;
+      }
+    }
+
+    const event = req.body as any;
+    const eventType: string = event?.type ?? '';
+    const data = event?.data ?? {};
+
+    const culqiOrderId: string | undefined = data?.order_id ?? data?.id;
+    if (!culqiOrderId) { res.json({ received: true }); return; }
+
+    const isPaymentSuccess =
+      eventType.includes('payment.succeeded') ||
+      eventType.includes('charge.creation.succeeded');
+    if (!isPaymentSuccess) { res.json({ received: true }); return; }
+
+    const orders = await prisma.order.findMany({ where: { culqiOrderId } });
+    if (orders.length === 0) { res.json({ received: true }); return; }
+
+    await prisma.order.updateMany({
+      where: { culqiOrderId },
+      data: { status: OrderStatus.CONFIRMED },
+    });
+
+    const userId = orders[0].userId;
+    const cartRef = orders[0].cartRef ?? culqiOrderId;
+    const grandTotal = orders.reduce((s, o) => s + o.total, 0);
+
+    await prisma.notification.create({
+      data: {
+        userId,
+        type: 'merch',
+        title: '¡Pago confirmado! ✅',
+        body: `Pedido ${cartRef} por S/${grandTotal.toFixed(2)} confirmado. Coordinamos el envío.`,
+      },
+    });
+    await sendPushToUser(userId, '¡Pago confirmado! ✅', `Tu pedido ${cartRef} está confirmado.`, { type: 'merch' });
+
+    console.log(`[Culqi] Webhook: confirmed ${orders.length} orders for ${culqiOrderId}`);
+    res.json({ received: true });
   } catch (err) { next(err) }
 }

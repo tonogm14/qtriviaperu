@@ -17,6 +17,7 @@ const configSchema = z.object({
   feePlin:           z.number().optional(),
   feeBCP:            z.number().optional(),
   feeInterbank:      z.number().optional(),
+  yapePhone:         z.string().optional(),
   termsAndConditions: z.string().optional(),
   privacyPolicy: z.string().optional(),
   autoCloseRegistration: z.boolean().optional(),
@@ -56,6 +57,20 @@ export async function getPrivacy(_req: Request, res: Response, next: NextFunctio
       create: { id: 'main' },
     });
     res.json({ data: { privacyPolicy: config.privacyPolicy } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getPaymentConfig(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const config = await prisma.appConfig.upsert({
+      where: { id: 'main' },
+      update: {},
+      create: { id: 'main' },
+      select: { yapePhone: true },
+    });
+    res.json({ data: config });
   } catch (err) {
     next(err);
   }
