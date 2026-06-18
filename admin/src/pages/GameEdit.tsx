@@ -367,14 +367,13 @@ export function GameEdit() {
       payload.recurringTime = form.recurringTime
       payload.scheduledAt = `${form.date}T${form.recurringTime}:00-05:00`
     } else {
-      payload.recurringMode = null
       payload.scheduledAt = `${form.date}T${form.time}:00-05:00`
     }
     try {
       let savedId = id!
       if (isNew) {
         const res = await createGame.mutateAsync({ ...payload })
-        savedId = (res as any).data?.id ?? savedId
+        savedId = (res as any).data?.data?.id ?? (res as any).data?.id ?? savedId
       } else {
         await updateGame.mutateAsync({ id: id!, data: payload })
       }

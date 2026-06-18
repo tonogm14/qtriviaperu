@@ -509,7 +509,8 @@ export function Games() {
     try {
       await deleteGame.mutateAsync(id)
     } catch (err: any) {
-      setDeleteError(err?.response?.data?.message ?? 'Error al eliminar el juego.')
+      const d = err?.response?.data
+      setDeleteError(d?.error ?? d?.message ?? 'Error al eliminar el juego.')
     }
   }
 
@@ -519,7 +520,8 @@ export function Games() {
       await updateGame.mutateAsync({ id: cancelTarget.id, data: { status: 'CANCELLED' } })
       setCancelTarget(null)
     } catch (err: any) {
-      setDeleteError(err?.response?.data?.message ?? 'Error al cancelar el juego.')
+      const d = err?.response?.data
+      setDeleteError(d?.error ?? d?.message ?? 'Error al cancelar el juego.')
       setCancelTarget(null)
     }
   }
@@ -530,7 +532,8 @@ export function Games() {
       await deleteGame.mutateAsync(archiveTarget.id)
       setArchiveTarget(null)
     } catch (err: any) {
-      setDeleteError(err?.response?.data?.message ?? 'Error al archivar el juego.')
+      const d = err?.response?.data
+      setDeleteError(d?.error ?? d?.message ?? 'Error al archivar el juego.')
       setArchiveTarget(null)
     }
   }
@@ -541,7 +544,8 @@ export function Games() {
       await updateGame.mutateAsync({ id: deleteRecurringTarget.id, data: { status: 'CANCELLED' } })
       setDeleteRecurringTarget(null)
     } catch (err: any) {
-      setDeleteError(err?.response?.data?.message ?? 'Error al archivar el juego.')
+      const d = err?.response?.data
+      setDeleteError(d?.error ?? d?.message ?? 'Error al archivar el juego.')
       setDeleteRecurringTarget(null)
     }
   }
