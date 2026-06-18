@@ -55,62 +55,44 @@ export async function getLeaderboard(req: Request, res: Response, next: NextFunc
 
     const range = getPeriodRange(period);
 
-    // Aggregate prize per user within the period
-    const gameEntryWhere: Record<string, unknown> = {
-      prize: { gt: 0 },
-    };
+    // Prize aggregation per user for the period (only won prizes)
+    const prizeWhere: Record<string, unknown> = { prize: { gt: 0 } };
+    if (range.gte || range.lte) prizeWhere.joinedAt = range;
 
-    if (range.gte || range.lte) {
-      gameEntryWhere.joinedAt = range;
-    }
+    const [allUsers, prizeAgg] = await Promise.all([
+      prisma.user.findMany({
+        select: { id: true, username: true, name: true, isVip: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.gameEntry.groupBy({
+        by: ['userId'],
+        where: prizeWhere,
+        _sum: { prize: true },
+        _count: { id: true },
+      }),
+    ]);
 
-    // Get aggregated prize per user
-    const prizeAgg = await prisma.gameEntry.groupBy({
-      by: ['userId'],
-      where: gameEntryWhere,
-      _sum: { prize: true },
-      _count: { id: true },
-      orderBy: { _sum: { prize: 'desc' } },
-      skip,
-      take: limit,
-    });
+    const prizeMap = new Map(prizeAgg.map((r) => [r.userId, r]));
 
-    // Get total distinct users who have won
-    const totalCount = await prisma.gameEntry.groupBy({
-      by: ['userId'],
-      where: gameEntryWhere,
-      _sum: { prize: true },
-    });
+    // Merge all users with their prize data, sort by totalPrize desc then by registration (asc)
+    const sorted = allUsers
+      .map((u) => ({
+        userId: u.id,
+        username: u.username,
+        name: u.name,
+        isVip: u.isVip,
+        totalPrize: prizeMap.get(u.id)?._sum?.prize ?? 0,
+        gamesWon: prizeMap.get(u.id)?._count?.id ?? 0,
+      }))
+      .sort((a, b) => b.totalPrize - a.totalPrize);
 
-    // Fetch user details
-    const userIds = prizeAgg.map((r) => r.userId);
-    const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
-      select: { id: true, username: true, name: true, isVip: true },
-    });
+    const total = sorted.length;
+    const leaderboard = sorted.slice(skip, skip + limit).map((entry, idx) => ({
+      rank: skip + idx + 1,
+      ...entry,
+    }));
 
-    const userMap = new Map(users.map((u) => [u.id, u]));
-
-    const leaderboard = prizeAgg.map((entry, idx) => {
-      const user = userMap.get(entry.userId);
-      return {
-        rank: skip + idx + 1,
-        userId: entry.userId,
-        username: user?.username ?? 'Unknown',
-        name: user?.name ?? 'Unknown',
-        isVip: user?.isVip ?? false,
-        totalPrize: entry._sum.prize ?? 0,
-        gamesPlayed: entry._count.id,
-      };
-    });
-
-    res.json({
-      data: leaderboard,
-      total: totalCount.length,
-      page,
-      limit,
-      period,
-    });
+    res.json({ data: leaderboard, total, page, limit, period });
   } catch (err) {
     next(err);
   }
