@@ -382,12 +382,9 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       const games: any[] = res.data?.data || [];
       console.log('[Dashboard] games:', games.length, games.map((g: any) => `${g.title}|${g.status}|fee=${g.entryFee}`));
 
-      const nextFree = games.find(
-        (g) => (g.status === 'PENDING' || g.status === 'LOBBY' || g.status === 'LIVE') && (g.entryFee === 0 || !g.entryFee)
-      );
-      const nextVip = games.find(
-        (g) => (g.status === 'PENDING' || g.status === 'LOBBY' || g.status === 'LIVE') && g.entryFee > 0
-      );
+      const active = (g: any) => g.status === 'PENDING' || g.status === 'LOBBY' || g.status === 'LIVE';
+      const nextFree = games.find((g) => active(g) && g.type === 'FREE');
+      const nextVip = games.find((g) => active(g) && (g.type === 'VIP' || g.type === 'SPECIAL'));
 
       const anyLive = games.some((g) => g.status === 'LIVE');
       setHasLiveGame(anyLive);
