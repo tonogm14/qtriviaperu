@@ -41,11 +41,11 @@ function gameDate(scheduledAt?: string): string {
   return new Date(scheduledAt).toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
 }
 
-function typeLabel(type?: GameType) {
-  if (type === 'FREE') return { icon: <Heart size={13} style={{ color: '#10B981' }} />, text: 'Gratis (recurrente diario)' }
-  if (type === 'VIP')  return { icon: <Crown size={13} style={{ color: '#7C3AED' }} />, text: 'VIP (recurrente diario)' }
-  return { icon: <Star size={13} style={{ color: '#D97706' }} />, text: 'Especial / patrocinado' }
-}
+const GAME_TYPES: { value: GameType; icon: React.ReactNode; label: string; desc: string; color: string }[] = [
+  { value: 'FREE',    icon: <Heart size={14} />,  label: 'Gratis',   desc: 'Sin costo — cualquier usuario puede unirse libre', color: '#10B981' },
+  { value: 'VIP',     icon: <Crown size={14} />,  label: 'VIP',      desc: 'Con precio de entrada — solo quienes paguen participan',       color: '#7C3AED' },
+  { value: 'SPECIAL', icon: <Star size={14} />,   label: 'Especial', desc: 'Patrocinado, de temporada o evento único',                     color: '#D97706' },
+]
 
 // ─── Inline new-question modal ────────────────────────────────────────────────
 
@@ -210,9 +210,6 @@ export function GameEdit() {
   const bankRaw: any[] = (questionsData as any)?.data ?? []
   const bankQuestions: Question[] = bankRaw.map(normalizeQ)
 
-  const gameType: GameType = existing?.type ?? 'SPECIAL'
-  const isRecurring = gameType === 'FREE'
-
   const [form, setForm] = useState({
     title: '',
     date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }),
@@ -241,7 +238,11 @@ export function GameEdit() {
   const [prizeImage, setPrizeImage] = useState<string | null>(null)
   const [prizeImageFile, setPrizeImageFile] = useState<File | null>(null)
   const [prizeImageUploading, setPrizeImageUploading] = useState(false)
-  const [recurringMode, setRecurringMode] = useState<'DAILY' | 'CONTINUOUS'>('DAILY')
+  const [gameTypeState, setGameTypeState] = useState<GameType>('SPECIAL')
+  const [emissionMode, setEmissionMode] = useState<'ONCE' | 'DAILY'>('ONCE')
+  const gameType = gameTypeState
+  const isDaily = emissionMode === 'DAILY'
+
   const [requiresCode, setRequiresCode] = useState(false)
   const [newCodeLabel, setNewCodeLabel] = useState('')
   const [newCodeEmail, setNewCodeEmail] = useState('')
@@ -289,7 +290,9 @@ export function GameEdit() {
       if ((existing as any).prizeTitle) setPrizeTitle((existing as any).prizeTitle)
       if ((existing as any).prizeDescription) setPrizeDescription((existing as any).prizeDescription)
       if ((existing as any).prizeImage) setPrizeImage((existing as any).prizeImage)
-      if ((existing as any).recurringMode) setRecurringMode((existing as any).recurringMode)
+      setGameTypeState(existing.type ?? 'SPECIAL')
+      const rm = (existing as any).recurringMode
+      setEmissionMode(rm === 'DAILY' || rm === 'CONTINUOUS' ? 'DAILY' : 'ONCE')
       setRequiresCode(!!(existing as any).requiresCode)
       setFormReady(true)
     }
@@ -351,31 +354,26 @@ export function GameEdit() {
       prizeSlots: winnerMode === 'RANKED_SLOTS' ? prizeSlots : null,
       prizeMode,
       potPercent: prizeMode === 'POT_PERCENT' ? potPercent : 100,
-      // streamUrl is managed exclusively by the stream panel — don't overwrite it here
       warmUpQuestionId: warmUpQuestionId ?? null,
       prizeType,
       prizeTitle: prizeType === 'PHYSICAL' ? (prizeTitle.trim() || null) : null,
       prizeDescription: prizeType === 'PHYSICAL' ? (prizeDescription.trim() || null) : null,
+      requiresCode,
+      type: gameTypeState,
+      entryFee: gameType === 'FREE' ? 0 : form.entryFee,
     }
-    payload.requiresCode = requiresCode
-    if (isRecurring) {
-      payload.recurringMode = recurringMode
-      if (recurringMode === 'DAILY') {
-        payload.recurringTime = form.recurringTime
-        payload.scheduledAt = `${form.date}T${form.recurringTime}:00-05:00`
-      } else {
-        // CONTINUOUS: just keep the date/time for the first run
-        payload.scheduledAt = `${form.date}T${form.time}:00-05:00`
-      }
-      if (gameType !== 'FREE') payload.entryFee = form.entryFee
+    if (isDaily) {
+      payload.recurringMode = 'DAILY'
+      payload.recurringTime = form.recurringTime
+      payload.scheduledAt = `${form.date}T${form.recurringTime}:00-05:00`
     } else {
+      payload.recurringMode = null
       payload.scheduledAt = `${form.date}T${form.time}:00-05:00`
-      payload.entryFee = form.entryFee
     }
     try {
       let savedId = id!
       if (isNew) {
-        const res = await createGame.mutateAsync({ ...payload, type: 'SPECIAL', scheduledAt: `${form.date}T${form.time}:00` })
+        const res = await createGame.mutateAsync({ ...payload })
         savedId = (res as any).data?.id ?? savedId
       } else {
         await updateGame.mutateAsync({ id: id!, data: payload })
@@ -432,20 +430,12 @@ export function GameEdit() {
     )
   }
 
-  const { icon: typeIcon, text: typeTxt } = typeLabel(gameType)
-
   return (
     <div className="fade-in">
       <div className="page-head">
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {typeIcon}
-            {isNew ? 'Crear juego especial' : `Editar: ${existing?.title ?? ''}`}
-          </h1>
-          <p className="page-sub" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {isRecurring && <Repeat2 size={13} />}
-            {typeTxt}
-          </p>
+          <h1 className="page-title">{isNew ? 'Crear juego' : `Editar: ${existing?.title ?? ''}`}</h1>
+          <p className="page-sub">{isNew ? 'Configura todos los detalles del juego antes de publicarlo' : `ID: ${id}`}</p>
         </div>
         <div className="page-actions">
           <Button kind="ghost" icon={X} onClick={() => navigate('/games')}>Cancelar</Button>
@@ -461,15 +451,6 @@ export function GameEdit() {
           <button onClick={() => setSaveError('')} style={{ marginLeft: 8, fontWeight: 700 }}>×</button>
         </div>
       )}
-      {isRecurring && (
-        <div className="alert alert-info" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-          {recurringMode === 'CONTINUOUS' ? <Zap size={14} /> : <Repeat2 size={14} />}
-          {recurringMode === 'CONTINUOUS'
-            ? <span>Juego <strong>continuo</strong> — al terminar una partida se crea la siguiente automáticamente de inmediato.</span>
-            : <span>Juego <strong>recurrente diario</strong> — configura la hora y las preguntas. Se resetea automáticamente cada día.</span>
-          }
-        </div>
-      )}
 
       <div className="edit-layout">
         {/* ── Left column ── */}
@@ -477,47 +458,64 @@ export function GameEdit() {
 
           {/* Info */}
           <Card>
-            <h3 className="section-title">Información general</h3>
+            <h3 className="section-title">Tipo de juego</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 4 }}>
+              {GAME_TYPES.map(gt => (
+                <button key={gt.value} type="button" onClick={() => setGameTypeState(gt.value)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    padding: '12px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'center',
+                    border: `2px solid ${gameType === gt.value ? gt.color : 'var(--ink-200)'}`,
+                    background: gameType === gt.value ? `${gt.color}10` : 'transparent',
+                    transition: 'all .12s',
+                  }}
+                >
+                  <span style={{ color: gt.color }}>{gt.icon}</span>
+                  <span style={{ fontWeight: 800, fontSize: 13, color: gameType === gt.value ? gt.color : 'var(--ink-700)' }}>{gt.label}</span>
+                  <span style={{ fontSize: 11, color: 'var(--ink-400)', lineHeight: 1.3 }}>{gt.desc}</span>
+                </button>
+              ))}
+            </div>
+
+            <h3 className="section-title" style={{ marginTop: 20 }}>Información general</h3>
             <div style={{ display: 'grid', gap: 16 }}>
               <Input label="Título" placeholder="Ej. Trivia Gratis · 6PM" value={form.title}
                 onChange={e => upd('title', e.target.value)} hint="Visible en la app móvil" />
-              {isRecurring ? (
-                <>
-                  {/* Recurring mode selector */}
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-                    <label className="input-label" style={{ margin: 0, alignSelf: 'center' }}>Modo recurrente</label>
-                    <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
-                      {(['DAILY', 'CONTINUOUS'] as const).map(m => (
-                        <button key={m} type="button" onClick={() => setRecurringMode(m)}
-                          style={{
-                            padding: '5px 14px', borderRadius: 999, border: '1.5px solid',
-                            fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                            borderColor: recurringMode === m ? 'var(--brand-500)' : 'var(--ink-200)',
-                            background: recurringMode === m ? 'var(--brand-50)' : 'transparent',
-                            color: recurringMode === m ? 'var(--brand-700)' : 'var(--ink-500)',
-                          }}
-                        >
-                          {m === 'DAILY' ? '📅 Horario fijo' : '⚡ Continuo'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {recurringMode === 'DAILY' ? (
-                    <div className="form-grid-2">
-                      <Input label="Fecha próxima sesión" type="date" value={form.date}
-                        onChange={e => upd('date', e.target.value)} hint="Sobreescribe la fecha calculada automáticamente" />
-                      <Input label="Hora diaria (Lima · GMT-5)" type="time" value={form.recurringTime}
-                        onChange={e => upd('recurringTime', e.target.value)} hint="Se mostrará cada día a esta hora" />
-                    </div>
-                  ) : (
-                    <div className="form-grid-2">
-                      <Input label="Primera sesión — Fecha" type="date" value={form.date}
-                        onChange={e => upd('date', e.target.value)} hint="Cuándo comienza la primera partida" />
-                      <Input label="Primera sesión — Hora (Lima)" type="time" value={form.time}
-                        onChange={e => upd('time', e.target.value)} hint="Después, las partidas se encadenan automáticamente" />
-                    </div>
-                  )}
-                </>
+
+              {/* Emission mode — visible for all game types */}
+              <div>
+                <label className="input-label" style={{ display: 'block', marginBottom: 8 }}>¿Con qué frecuencia se emite?</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {([
+                    { value: 'ONCE' as const,  icon: '🎯', label: 'Una sola vez',   desc: 'Juego puntual en fecha y hora específica' },
+                    { value: 'DAILY' as const, icon: '🔄', label: 'Todos los días', desc: 'Se repite automáticamente cada día a la misma hora' },
+                  ]).map(m => (
+                    <button key={m.value} type="button" onClick={() => setEmissionMode(m.value)}
+                      style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 10,
+                        padding: '12px 14px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                        border: `2px solid ${emissionMode === m.value ? 'var(--brand-500)' : 'var(--ink-200)'}`,
+                        background: emissionMode === m.value ? 'var(--brand-50)' : 'transparent',
+                        transition: 'all .12s',
+                      }}
+                    >
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>{m.icon}</span>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 13, color: emissionMode === m.value ? 'var(--brand-700)' : 'var(--ink-700)' }}>{m.label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 2, lineHeight: 1.3 }}>{m.desc}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {isDaily ? (
+                <div className="form-grid-2">
+                  <Input label="Fecha próxima sesión" type="date" value={form.date}
+                    onChange={e => upd('date', e.target.value)} hint="El scheduler la actualiza automáticamente cada día" />
+                  <Input label="Hora diaria (Lima · GMT-5)" type="time" value={form.recurringTime}
+                    onChange={e => upd('recurringTime', e.target.value)} hint="Se emite cada día a esta hora" />
+                </div>
               ) : (
                 <div className="form-grid-2">
                   <Input label="Fecha" type="date" value={form.date} onChange={e => upd('date', e.target.value)} />
@@ -608,15 +606,13 @@ export function GameEdit() {
                   )}
                 </div>
               )}
-              {!isRecurring && (
-                <Select label="Estado" value={form.status} onChange={e => upd('status', e.target.value)}>
-                  <option value="PENDING">Pendiente</option>
-                  <option value="LOBBY">Próximo (lobby abierto)</option>
-                  <option value="LIVE">En vivo</option>
-                  <option value="FINISHED">Finalizado</option>
-                  <option value="CANCELLED">Cancelado</option>
-                </Select>
-              )}
+              <Select label="Estado" value={form.status} onChange={e => upd('status', e.target.value)}>
+                <option value="PENDING">Pendiente</option>
+                <option value="LOBBY">Próximo (lobby abierto)</option>
+                <option value="LIVE">En vivo</option>
+                <option value="FINISHED">Finalizado</option>
+                <option value="CANCELLED">Cancelado</option>
+              </Select>
             </div>
           </Card>
 
