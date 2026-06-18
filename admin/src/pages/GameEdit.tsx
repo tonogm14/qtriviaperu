@@ -65,6 +65,7 @@ function NewQuestionModal({
     correct: 0,
     difficulty: 'media' as Question['difficulty'],
     category: 'General',
+    suddenDeath: false,
   })
   const [error, setError] = useState('')
 
@@ -74,7 +75,7 @@ function NewQuestionModal({
     setForm(f => ({ ...f, options: f.options.map((o, idx) => (idx === i ? v : o)) }))
 
   const reset = () => {
-    setForm({ text: '', options: ['', '', ''], correct: 0, difficulty: 'media', category: 'General' })
+    setForm({ text: '', options: ['', '', ''], correct: 0, difficulty: 'media', category: 'General', suddenDeath: false })
     setError('')
   }
 
@@ -89,6 +90,7 @@ function NewQuestionModal({
         correct: form.correct,
         difficulty: DIFF_TO_API[form.difficulty] as any,
         category: form.category,
+        suddenDeath: form.suddenDeath,
       } as any)
       const created = normalizeQ((res as any).data ?? res)
       onCreated(created)
@@ -174,6 +176,25 @@ function NewQuestionModal({
             <option>Geografía</option><option>Deportes</option><option>Ciencia</option>
             <option>Arte</option><option>Lima</option><option>Cultura</option>
           </Select>
+        </div>
+
+        <div
+          onClick={() => upd('suddenDeath', !form.suddenDeath)}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+            background: form.suddenDeath ? 'rgba(239,68,68,0.06)' : 'var(--ink-50)',
+            border: `1.5px solid ${form.suddenDeath ? '#ef4444' : 'var(--ink-150)'}`,
+            transition: 'all .15s',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: form.suddenDeath ? '#ef4444' : 'var(--ink-700)' }}>⚡ Muerte súbita</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 2 }}>El jugador no puede cambiar su respuesta una vez seleccionada</div>
+          </div>
+          <div style={{ width: 36, height: 20, borderRadius: 10, background: form.suddenDeath ? '#ef4444' : 'var(--ink-200)', position: 'relative', flexShrink: 0, transition: 'background .15s' }}>
+            <div style={{ position: 'absolute', top: 2, left: form.suddenDeath ? 18 : 2, width: 16, height: 16, borderRadius: 8, background: 'white', transition: 'left .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          </div>
         </div>
       </div>
     </Modal>
