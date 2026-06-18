@@ -395,6 +395,7 @@ export function GameEdit() {
       if (isNew) {
         const res = await createGame.mutateAsync({ ...payload })
         savedId = (res as any).data?.data?.id ?? (res as any).data?.id ?? savedId
+        if (savedId && savedId !== 'new') navigate(`/games/${savedId}/edit`, { replace: true })
       } else {
         await updateGame.mutateAsync({ id: id!, data: payload })
       }
@@ -418,7 +419,7 @@ export function GameEdit() {
         setPrizeImageUploading(false)
       }
       setSavedOk(true)
-      setTimeout(() => navigate('/games'), 800)
+      setTimeout(() => setSavedOk(false), 2000)
     } catch (err: any) {
       const data = err?.response?.data
       const detail = data?.details?.map((d: any) => `${d.field}: ${d.message}`).join(', ')
