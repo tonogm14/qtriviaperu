@@ -6,7 +6,7 @@ import { StatusBadge, Badge } from '../components/ui/Badge'
 import { Button, IconButton } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { Input, Select } from '../components/ui/Input'
-import { useGames, useCreateGame, useUpdateGame, useDeleteGame, useStartGame, useSendBroadcast, useScheduledNotifications, useDeleteScheduled } from '../api/hooks'
+import { useGames, useUpdateGame, useDeleteGame, useStartGame, useSendBroadcast, useScheduledNotifications, useDeleteScheduled } from '../api/hooks'
 import type { ScheduledNotification } from '../api/hooks'
 import type { Game } from '../types'
 
@@ -64,85 +64,7 @@ function TableSkeleton() {
   )
 }
 
-function CreateSpecialGameModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const createGame = useCreateGame()
-  const [error, setError] = useState('')
-  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
-  const [form, setForm] = useState({
-    title: '',
-    date: today,
-    time: '21:00',
-    category: 'Mixta',
-    prize: 5000,
-    entryFee: 0,
-    questions: 12,
-  })
-  const upd = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
-    setForm((f) => ({ ...f, [k]: v }))
 
-  const handleCreate = async () => {
-    setError('')
-    const scheduledAt = `${form.date}T${form.time}:00-05:00`
-    try {
-      await createGame.mutateAsync({
-        title: form.title || 'Juego Especial',
-        scheduledAt,
-        type: 'SPECIAL' as any,
-        prize: form.prize,
-        entryFee: form.entryFee,
-        maxQuestions: form.questions,
-        category: form.category,
-      })
-      onClose()
-    } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Error al crear el juego.')
-    }
-  }
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Crear juego especial / patrocinado"
-      width={560}
-      footer={
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button kind="ghost" onClick={onClose}>Cancelar</Button>
-          <Button kind="primary" onClick={handleCreate} disabled={createGame.isPending}>
-            {createGame.isPending ? 'Creando…' : 'Crear juego'}
-          </Button>
-        </div>
-      }
-    >
-      <div style={{ display: 'grid', gap: 16 }}>
-        {error && <div className="alert alert-warn">{error}</div>}
-        <div className="alert alert-info" style={{ fontSize: 13 }}>
-          <Star size={13} style={{ display: 'inline', marginRight: 6 }} />
-          Los juegos <strong>Gratis</strong> y <strong>VIP</strong> son permanentes y recurrentes — edítalos desde la tabla. Aquí solo se crean juegos especiales (sponsor, evento, etc.)
-        </div>
-        <Input
-          label="Título del juego"
-          placeholder="Ej. Trivia Coca-Cola · Edición Especial"
-          value={form.title}
-          onChange={(e) => upd('title', e.target.value)}
-        />
-        <div className="form-grid-2">
-          <Input label="Fecha" type="date" value={form.date} onChange={(e) => upd('date', e.target.value)} />
-          <Input label="Hora (Lima · GMT-5)" type="time" value={form.time} onChange={(e) => upd('time', e.target.value)} />
-        </div>
-        <div className="form-grid-3">
-          <Select label="Categoría" value={form.category} onChange={(e) => upd('category', e.target.value)}>
-            <option>Mixta</option><option>Pop</option><option>Historia</option>
-            <option>Geografía</option><option>Deportes</option><option>Ciencia</option>
-          </Select>
-          <Input label="Premio (S/)" type="number" value={form.prize} onChange={(e) => upd('prize', Number(e.target.value))} />
-          <Input label="Precio entrada (S/)" type="number" min={0} value={form.entryFee} onChange={(e) => upd('entryFee', Number(e.target.value))} hint="0 = acceso libre" />
-        </div>
-        <Input label="# Preguntas" type="number" value={form.questions} onChange={(e) => upd('questions', Number(e.target.value))} />
-      </div>
-    </Modal>
-  )
-}
 
 type BroadcastTarget = 'all' | 'game' | 'user' | 'vip'
 type BroadcastType = 'reminder' | 'bonus' | 'win' | 'rank' | 'life' | 'general'
@@ -542,7 +464,7 @@ function GameTypeBadge({ type, isRecurring }: { type?: string; isRecurring?: boo
 export function Games() {
   const navigate = useNavigate()
   const [tab, setTab] = useState('programado')
-  const [createOpen, setCreateOpen] = useState(false)
+
   const [deleteError, setDeleteError] = useState('')
   const [notifTarget, setNotifTarget] = useState<{ id: string; title: string } | null>(null)
   const [startTarget, setStartTarget] = useState<Game | null>(null)
@@ -634,7 +556,7 @@ export function Games() {
         <div className="page-actions">
           <Button kind="secondary" icon={Download}>Exportar</Button>
           <Button kind="secondary" icon={Bell} onClick={() => setNotifTarget({ id: '', title: '' })}>Notificar todos</Button>
-          <Button kind="primary" icon={Plus} onClick={() => setCreateOpen(true)}>Nuevo especial</Button>
+          <Button kind="primary" icon={Plus} onClick={() => navigate('/games/new')}>Crear juego</Button>
         </div>
       </div>
 
@@ -834,7 +756,6 @@ export function Games() {
         </div>
       </Card>
 
-      <CreateSpecialGameModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <SendNotificationModal
         open={notifTarget !== null}
         onClose={() => setNotifTarget(null)}
