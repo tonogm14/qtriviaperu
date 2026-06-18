@@ -30,7 +30,7 @@ interface LeaderboardEntry {
   rank: number;
   name: string;
   username: string;
-  score: number;
+  gamesWon: number;
   isMe: boolean;
 }
 
@@ -145,7 +145,7 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.avatarText}>{getInitials(top3[1]?.name || 'P')}</Text>
                 </View>
                 <Text style={styles.podiumName}>{top3[1]?.name}</Text>
-                <Text style={styles.podiumScore}>{top3[1]?.score}</Text>
+                <Text style={styles.podiumScore}>🏆 {top3[1]?.gamesWon ?? 0}</Text>
                 <View style={[styles.podiumPedestal, { height: 60, backgroundColor: Colors.purple + 'CC' }]} />
               </View>
 
@@ -162,7 +162,7 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
                 </View>
                 <Text style={styles.podiumName}>{top3[0]?.name}</Text>
                 <Text style={[styles.podiumScore, { color: Colors.yellow, fontSize: 18 }]}>
-                  {top3[0]?.score}
+                  🏆 {top3[0]?.gamesWon ?? 0}
                 </Text>
                 <View style={[styles.podiumPedestal, { height: 85, backgroundColor: Colors.yellow + 'CC' }]} />
               </View>
@@ -176,7 +176,7 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.avatarText}>{getInitials(top3[2]?.name || 'L')}</Text>
                 </View>
                 <Text style={styles.podiumName}>{top3[2]?.name}</Text>
-                <Text style={styles.podiumScore}>{top3[2]?.score}</Text>
+                <Text style={styles.podiumScore}>🏆 {top3[2]?.gamesWon ?? 0}</Text>
                 <View style={[styles.podiumPedestal, { height: 45, backgroundColor: Colors.pinkLight + 'CC' }]} />
               </View>
             </View>
@@ -208,7 +208,7 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
                   <Text style={styles.rankUsername}>@{player.username}</Text>
                 </View>
                 <Text style={[styles.rankScore, player.isMe && { color: Colors.yellow }]}>
-                  {player.score}
+                  🏆 {player.gamesWon ?? 0}
                 </Text>
               </View>
             ))}
