@@ -591,7 +591,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
         )}
 
         {/* VIP Card */}
-        <View style={styles.vipCard}>
+        {vipGame && <View style={styles.vipCard}>
           <View style={styles.vipGlowTop} />
           <View style={styles.vipGlowBottom} />
           <View style={styles.vipSparkle1}>
@@ -756,7 +756,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </TouchableOpacity>
           )}
-        </View>
+        </View>}
 
         <View style={{ height: 110 }} />
       </ScrollView>
