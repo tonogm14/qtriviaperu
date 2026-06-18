@@ -138,6 +138,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const chatUnlocked = countdown <= CHAT_UNLOCK_SECS || game?.status === 'LOBBY' || game?.status === 'LIVE';
   const wasUnlocked = useRef(chatUnlocked);
+  const fromSocketCountdown = useRef(false);
 
   // ── Animated values ──────────────────────────────────────────────
   // Countdown block slides from center to just below top bar
@@ -213,6 +214,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
 
     // Host forced-start: server emits game:countdown (5…1) before questions begin
     onGameCountdown((data: any) => {
+      fromSocketCountdown.current = true;
       setCountdown(data.seconds ?? 0);
     });
 
@@ -234,9 +236,11 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // ── Countdown tick — recompute from scheduledAt each second so both phones stay in sync ──
   useEffect(() => {
+    fromSocketCountdown.current = false;
     const tick = () => {
       if (scheduledAt) {
-        setCountdown(Math.max(0, Math.floor((new Date(scheduledAt).getTime() - Date.now()) / 1000)));
+        const remaining = Math.max(0, Math.floor((new Date(scheduledAt).getTime() - Date.now()) / 1000));
+        setCountdown(remaining);
       } else {
         setCountdown((p) => (p <= 1 ? 0 : p - 1));
       }
@@ -247,7 +251,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [scheduledAt]);
 
   useEffect(() => {
-    if (countdown === 0) {
+    if (countdown === 0 && fromSocketCountdown.current) {
       setGameState('live');
       navigation.replace('Live', { gameId, streamUrl });
     }

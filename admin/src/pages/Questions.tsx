@@ -25,6 +25,7 @@ function QuestionEditorModal({
     correct: question?.correct ?? 0,
     difficulty: question?.difficulty ?? 'media' as Question['difficulty'],
     category: question?.category ?? 'General',
+    suddenDeath: question?.suddenDeath ?? false,
   })
   const upd = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }))
@@ -123,9 +124,25 @@ function QuestionEditorModal({
           </Select>
         </div>
 
+        {/* Sudden death toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: form.suddenDeath ? 'rgba(239,68,68,0.08)' : 'var(--ink-50)', borderRadius: 10, border: `1.5px solid ${form.suddenDeath ? '#ef4444' : 'var(--ink-150)'}`, cursor: 'pointer', transition: 'all .15s' }} onClick={() => upd('suddenDeath', !form.suddenDeath)}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 13, color: form.suddenDeath ? '#ef4444' : 'var(--ink-700)' }}>⚡ Muerte súbita</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 2 }}>El jugador no puede cambiar su respuesta una vez seleccionada</div>
+          </div>
+          <div style={{ width: 36, height: 20, borderRadius: 10, background: form.suddenDeath ? '#ef4444' : 'var(--ink-200)', position: 'relative', flexShrink: 0, transition: 'background .15s' }}>
+            <div style={{ position: 'absolute', top: 2, left: form.suddenDeath ? 18 : 2, width: 16, height: 16, borderRadius: 8, background: 'white', transition: 'left .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+          </div>
+        </div>
+
         {/* Live preview */}
         <div className="question-preview">
           <div className="question-preview-label">Vista previa</div>
+          {form.suddenDeath && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <span style={{ background: '#ef4444', color: 'white', fontSize: 10, fontWeight: 800, letterSpacing: 1.5, padding: '3px 10px', borderRadius: 999 }}>⚡ MUERTE SÚBITA</span>
+            </div>
+          )}
           <div className="question-preview-text">{form.text || 'Texto de la pregunta'}</div>
           <div className="question-preview-options">
             {form.options.map((opt, i) => (
@@ -205,6 +222,7 @@ export function Questions() {
     correctIndex: q.correct,
     category: q.category,
     difficulty: difficultyEnumMap[q.difficulty] ?? q.difficulty.toUpperCase(),
+    suddenDeath: q.suddenDeath ?? false,
   })
 
   const handleSave = async (q: Omit<Question, 'id' | 'createdAt'>) => {
@@ -351,7 +369,10 @@ export function Questions() {
                     <Badge tone="brand">{q.category ?? 'General'}</Badge>
                   </td>
                   <td>
-                    <Badge tone={diffTone}>{q.difficulty}</Badge>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Badge tone={diffTone}>{q.difficulty}</Badge>
+                      {q.suddenDeath && <Badge tone="red">⚡ muerte súbita</Badge>}
+                    </div>
                   </td>
                   <td className="cell-mono" style={{ textAlign: 'right' }}>{q.timeLimit}s</td>
                   <td className="cell-muted">{q.createdAt?.slice(0, 10) ?? '—'}</td>

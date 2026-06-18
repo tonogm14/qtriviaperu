@@ -172,13 +172,19 @@ export function initGameSocket(io: SocketServer): void {
 
         const answerKey = `${userId}:${qIdx}`;
 
-        // Allow answer changes: if already answered this question, just update in-memory and re-confirm
+        // If already answered this question, only allow changes for non-sudden-death questions
         if (state.answers.has(answerKey)) {
           const gq = await prisma.gameQuestion.findFirst({
             where: { gameId, order: qIdx + 1 },
             include: { question: true },
           });
           if (!gq) return;
+          // Sudden death: lock the first answer, re-confirm it silently
+          if (gq.question.suddenDeath) {
+            const existing = state.answers.get(answerKey)!;
+            socket.emit('answer:result', { gameId, qIdx, correct: existing.correct, correctIndex: gq.question.correctIndex });
+            return;
+          }
           const correct = answerIndex === gq.question.correctIndex;
           state.answers.set(answerKey, { answerIndex, correct });
           socket.emit('answer:result', { gameId, qIdx, correct, correctIndex: gq.question.correctIndex });
@@ -395,7 +401,7 @@ async function runGameQuestions(
     id: string;
     questions: Array<{
       order: number;
-      question: { text: string; options: string[]; correctIndex: number };
+      question: { text: string; options: string[]; correctIndex: number; suddenDeath: boolean };
     }>;
     timePerQuestion: number;
   },
@@ -459,6 +465,7 @@ async function runGameQuestions(
       qIdx: i,
       question: gq.question.text,
       options: gq.question.options,
+      suddenDeath: gq.question.suddenDeath,
     };
     io.to(`game:${gameId}`).emit('game:question', qPayload);
 

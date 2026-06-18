@@ -24,6 +24,7 @@ export function QuestionEdit() {
     correct: 0,
     difficulty: 'media' as Question['difficulty'],
     category: 'General',
+    suddenDeath: false,
   })
   const [formReady, setFormReady] = useState(isNew)
   const [saveError, setSaveError] = useState('')
@@ -41,6 +42,7 @@ export function QuestionEdit() {
         correct: (existing as any).correctIndex ?? existing.correct ?? 0,
         difficulty: difficultyFromApi[existing.difficulty] ?? existing.difficulty ?? 'media',
         category: existing.category ?? 'General',
+        suddenDeath: (existing as any).suddenDeath ?? false,
       })
       setFormReady(true)
     }
@@ -63,6 +65,7 @@ export function QuestionEdit() {
     correctIndex: form.correct,
     category: form.category,
     difficulty: difficultyToApi[form.difficulty] ?? form.difficulty.toUpperCase(),
+    suddenDeath: form.suddenDeath,
   })
 
   const handleSave = async () => {
@@ -200,6 +203,19 @@ export function QuestionEdit() {
               </Select>
             </div>
           </Card>
+
+          <Card>
+            <h3 className="section-title">Modalidad</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: form.suddenDeath ? 'rgba(239,68,68,0.06)' : 'var(--ink-50)', borderRadius: 10, border: `1.5px solid ${form.suddenDeath ? '#ef4444' : 'var(--ink-150)'}`, cursor: 'pointer', transition: 'all .15s' }} onClick={() => upd('suddenDeath', !form.suddenDeath)}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: form.suddenDeath ? '#ef4444' : 'var(--ink-700)' }}>⚡ Muerte súbita</div>
+                <div style={{ fontSize: 11, color: 'var(--ink-400)', marginTop: 2 }}>El jugador no puede cambiar su respuesta una vez seleccionada</div>
+              </div>
+              <div style={{ width: 36, height: 20, borderRadius: 10, background: form.suddenDeath ? '#ef4444' : 'var(--ink-200)', position: 'relative', flexShrink: 0, transition: 'background .15s' }}>
+                <div style={{ position: 'absolute', top: 2, left: form.suddenDeath ? 18 : 2, width: 16, height: 16, borderRadius: 8, background: 'white', transition: 'left .15s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              </div>
+            </div>
+          </Card>
         </div>
 
         {/* Preview */}
@@ -207,6 +223,11 @@ export function QuestionEdit() {
           <Card style={{ position: 'sticky', top: 80 }}>
             <h3 className="section-title">Vista previa</h3>
             <div className="question-preview">
+              {form.suddenDeath && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 10 }}>
+                  <span style={{ background: '#ef4444', color: 'white', fontSize: 10, fontWeight: 800, letterSpacing: 1.5, padding: '3px 10px', borderRadius: 999 }}>⚡ MUERTE SÚBITA</span>
+                </div>
+              )}
               <div className="question-preview-text">{form.text || 'Texto de la pregunta aparecerá aquí'}</div>
               <div className="question-preview-options">
                 {form.options.map((opt, i) => (

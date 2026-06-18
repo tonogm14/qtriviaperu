@@ -186,27 +186,21 @@ function FreeGameCard({
 
       {/* countdown — hidden when game is already live */}
       {game?.status !== 'LIVE' && (
-        freeRemain > 0 ? (
-          <View style={fgStyles.countdown}>
-            {[
-              { v: pad(fh), l: 'HRS' },
-              { v: pad(fm), l: 'MIN' },
-              { v: pad(fs), l: 'SEG' },
-            ].map((t, i) => (
-              <React.Fragment key={i}>
-                <View style={fgStyles.countdownUnit}>
-                  <Text style={fgStyles.countdownNum}>{t.v}</Text>
-                  <Text style={fgStyles.countdownLabel}>{t.l}</Text>
-                </View>
-                {i < 2 && <Text style={fgStyles.countdownColon}>:</Text>}
-              </React.Fragment>
-            ))}
-          </View>
-        ) : (
-          <View style={fgStyles.countdownSoon}>
-            <Text style={fgStyles.countdownSoonText}>Iniciando pronto</Text>
-          </View>
-        )
+        <View style={fgStyles.countdown}>
+          {[
+            { v: pad(fh), l: 'HRS' },
+            { v: pad(fm), l: 'MIN' },
+            { v: pad(fs), l: 'SEG' },
+          ].map((t, i) => (
+            <React.Fragment key={i}>
+              <View style={fgStyles.countdownUnit}>
+                <Text style={fgStyles.countdownNum}>{t.v}</Text>
+                <Text style={fgStyles.countdownLabel}>{t.l}</Text>
+              </View>
+              {i < 2 && <Text style={fgStyles.countdownColon}>:</Text>}
+            </React.Fragment>
+          ))}
+        </View>
       )}
 
       {/* CTA */}
@@ -312,13 +306,6 @@ const fgStyles = StyleSheet.create({
   countdownNum: { fontSize: 24, fontWeight: '900', color: 'white', letterSpacing: -0.5 },
   countdownLabel: { fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 2 },
   countdownColon: { fontSize: 24, fontWeight: '900', color: 'rgba(52,211,153,0.5)', alignSelf: 'flex-start', marginTop: 2 },
-  countdownSoon: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 14, marginVertical: 4,
-    backgroundColor: 'rgba(0,0,0,0.32)', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-  },
-  countdownSoonText: { color: 'rgba(52,211,153,0.9)', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
   participarBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -702,27 +689,21 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           )}
 
           {vipGame?.status !== 'LIVE' && (
-            vipRemain > 0 ? (
-              <View style={styles.countdown}>
-                {[
-                  { v: pad(rh), l: 'HRS' },
-                  { v: pad(rm), l: 'MIN' },
-                  { v: pad(rs), l: 'SEG' },
-                ].map((t, i) => (
-                  <React.Fragment key={i}>
-                    <View style={styles.countdownUnit}>
-                      <Text style={styles.countdownNum}>{t.v}</Text>
-                      <Text style={styles.countdownLabel}>{t.l}</Text>
-                    </View>
-                    {i < 2 && <Text style={styles.countdownColon}>:</Text>}
-                  </React.Fragment>
-                ))}
-              </View>
-            ) : (
-              <View style={styles.countdownSoon}>
-                <Text style={styles.countdownSoonText}>Iniciando pronto</Text>
-              </View>
-            )
+            <View style={styles.countdown}>
+              {[
+                { v: pad(rh), l: 'HRS' },
+                { v: pad(rm), l: 'MIN' },
+                { v: pad(rs), l: 'SEG' },
+              ].map((t, i) => (
+                <React.Fragment key={i}>
+                  <View style={styles.countdownUnit}>
+                    <Text style={styles.countdownNum}>{t.v}</Text>
+                    <Text style={styles.countdownLabel}>{t.l}</Text>
+                  </View>
+                  {i < 2 && <Text style={styles.countdownColon}>:</Text>}
+                </React.Fragment>
+              ))}
+            </View>
           )}
 
           {vipGame?.status === 'LIVE' && isVipJoined ? (
@@ -1177,13 +1158,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginTop: 2,
   },
-  countdownSoon: {
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 14, marginVertical: 4,
-    backgroundColor: 'rgba(0,0,0,0.32)', borderRadius: 14,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-  },
-  countdownSoonText: { color: 'rgba(250,204,21,0.9)', fontSize: 15, fontWeight: '800', letterSpacing: 0.5 },
   participarBtn: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -15,6 +15,7 @@ const questionSchema = z.object({
   correctIndex: z.number().int().min(0).max(2),
   category: z.string().default('General'),
   difficulty: z.nativeEnum(Difficulty).default(Difficulty.MEDIUM),
+  suddenDeath: z.boolean().default(false),
 });
 
 const listQuestionsSchema = z.object({

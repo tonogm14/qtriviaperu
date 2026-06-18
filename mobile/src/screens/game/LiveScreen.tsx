@@ -66,7 +66,7 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
   const [phase, setPhase] = useState<Phase>('waiting');
   const [questionIdx, setQuestionIdx] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
-  const [currentQuestion, setCurrentQuestion] = useState<{ text: string; answers: string[]; correct: number } | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<{ text: string; answers: string[]; correct: number; suddenDeath: boolean } | null>(null);
   const [timeLeft, setTimeLeft] = useState(TIMER_MAX);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [revealCorrect, setRevealCorrect] = useState<number | null>(null);
@@ -199,6 +199,7 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
         text: data.question || data.text || '',
         answers: data.answers || data.options || [],
         correct: data.correctIndex ?? 0,
+        suddenDeath: !!data.suddenDeath,
       });
       setQuestionIdx(data.questionIndex ?? data.qIdx ?? 0);
       setTotalQuestions(data.totalQuestions ?? 0);
@@ -282,7 +283,8 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
     return () => clearInterval(interval);
   }, [phase]);
 
-  const answerLocked = phase !== 'answering' || timeLeft <= 2 || isEliminated;
+  const isSuddenDeath = !!currentQuestion?.suddenDeath;
+  const answerLocked = phase !== 'answering' || timeLeft <= 2 || isEliminated || (isSuddenDeath && selectedAnswer !== null);
 
   const handleAnswer = (idx: number) => {
     if (answerLocked || idx === selectedAnswer) return;
@@ -419,6 +421,11 @@ const getAnswerBg = (idx: number): string => {
               </View>
             )}
           </View>
+          {isSuddenDeath && (
+            <View style={styles.suddenDeathBadge}>
+              <Text style={styles.suddenDeathBadgeText}>⚡ MUERTE SÚBITA</Text>
+            </View>
+          )}
           <Text style={styles.questionText}>{currentQuestion.text}</Text>
           <View style={styles.answersContainer}>
             {currentQuestion.answers.map((answer, idx) => (
@@ -1008,6 +1015,21 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     letterSpacing: 1,
+  },
+
+  suddenDeathBadge: {
+    alignSelf: 'center',
+    backgroundColor: '#EF4444',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginBottom: 10,
+  },
+  suddenDeathBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
 
   // Eliminated modal overlay

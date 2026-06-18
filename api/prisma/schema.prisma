@@ -139,6 +139,7 @@ model Question {
   category     String         @default("General")
   difficulty   Difficulty     @default(MEDIUM)
   isArchived   Boolean        @default(false)
+  suddenDeath  Boolean        @default(false)
   createdAt    DateTime       @default(now())
   games        GameQuestion[]
 }

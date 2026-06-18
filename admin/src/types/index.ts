@@ -59,6 +59,7 @@ export interface Question {
   timeLimit?: number
   category?: string
   createdAt?: string
+  suddenDeath?: boolean
 }
 
 export type UserStatus = 'activo' | 'inactivo' | 'baneado' | 'active' | 'inactive' | 'banned'
