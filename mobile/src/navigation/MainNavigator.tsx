@@ -104,8 +104,7 @@ export const MainNavigator: React.FC = () => {
   useEffect(() => {
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as any;
-      if (!data?.gameId) return;
-      if (data?.type === 'reminder') {
+      if (data?.type === 'new_game' || data?.type === 'reminder') {
         navigate('Dashboard');
       }
     });

@@ -9,6 +9,7 @@ import { broadcastGameStart, closeRegistrationOnly, isRegistrationClosed } from 
 import { io } from '../index';
 import { AuthRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
+import { sendBroadcast } from '../services/pushNotifications';
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/prizes');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -220,6 +221,25 @@ export async function createGame(req: Request, res: Response, next: NextFunction
         prizeSlots: prizeSlots !== undefined ? (prizeSlots ?? Prisma.JsonNull) : undefined,
       },
     });
+
+    // Notify all users about the new game (fire-and-forget)
+    const typeLabel = game.type === 'VIP' ? 'VIP' : game.type === 'SPECIAL' ? 'Especial' : 'Gratis';
+    const prize = game.prize > 0 ? ` · Premio S/${game.prize.toLocaleString('es-PE')}` : '';
+    const when = game.scheduledAt
+      ? new Date(game.scheduledAt).toLocaleString('es-PE', {
+          timeZone: 'America/Lima',
+          weekday: 'short',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : '';
+    sendBroadcast(
+      `🎮 Nuevo juego ${typeLabel}: ${game.title}`,
+      `${when}${prize}. ¡Regístrate ahora!`,
+      { data: { type: 'new_game', gameId: game.id } }
+    ).catch(() => {});
+
     res.status(201).json({ data: game });
   } catch (err) {
     next(err);
