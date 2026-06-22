@@ -162,9 +162,19 @@ export const JoinGameModal: React.FC<Props> = ({
             {/* Stats grid */}
             <View style={styles.statsGrid}>
               <View style={styles.statCard}>
-                <Text style={styles.statLabel}>EMPIEZA EN</Text>
-                <CountdownPill target={target} />
-                <Text style={styles.statSub}>estate listo</Text>
+                {game?.status === 'LOBBY' ? (
+                  <>
+                    <Text style={styles.statLabel}>ESTADO</Text>
+                    <Text style={styles.statValue}>¡Ya empieza!</Text>
+                    <Text style={styles.statSub}>regístrate ahora</Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.statLabel}>EMPIEZA EN</Text>
+                    <CountdownPill target={target} />
+                    <Text style={styles.statSub}>estate listo</Text>
+                  </>
+                )}
               </View>
             </View>
 

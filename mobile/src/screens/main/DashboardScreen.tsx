@@ -582,7 +582,14 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             isJoined={isJoined}
             freeStarted={freeStarted}
             freeRemain={freeRemain}
-            onJoin={() => setShowJoinModal(true)}
+            onJoin={() => {
+              if (freeGame?.status === 'LIVE') {
+                setGameState('live');
+                navigation.navigate('Live', { gameId: freeGame.id, streamUrl: freeGame.streamUrl || null });
+              } else {
+                setShowJoinModal(true);
+              }
+            }}
             onEnterLobby={handleEnterLobby}
           />
         )}

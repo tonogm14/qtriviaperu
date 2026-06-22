@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { createStackNavigator } from '@react-navigation/stack';
 import { navigate } from './navigationRef';
 import { DashboardScreen } from '../screens/main/DashboardScreen';
@@ -22,6 +23,7 @@ import { CompleteProfileScreen } from '../screens/auth/CompleteProfileScreen';
 import { JuvTabBar } from '../components/JuvTabBar';
 import { useStore } from '../store/useStore';
 import { track } from '../services/analytics';
+import { registerForPushNotifications } from '../services/notifications';
 
 export type MainStackParamList = {
   Dashboard: undefined;
@@ -87,11 +89,28 @@ export const MainNavigator: React.FC = () => {
   const { setActiveTab, needsProfileCompletion } = useStore();
   const [currentRoute, setCurrentRoute] = useState('Dashboard');
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!needsProfileCompletion) return;
     const timer = setTimeout(() => navigate('CompleteProfile'), 100);
     return () => clearTimeout(timer);
   }, [needsProfileCompletion]);
+
+  // Register push token once on mount (user is authenticated at this point)
+  useEffect(() => {
+    registerForPushNotifications();
+  }, []);
+
+  // Navigate to the right screen when user taps a push notification
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as any;
+      if (!data?.gameId) return;
+      if (data?.type === 'reminder') {
+        navigate('Dashboard');
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <View style={styles.container}>
