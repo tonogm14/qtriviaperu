@@ -60,6 +60,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
   const [game, setGame] = useState<any>(route?.params?.game ?? null);
   const [prize, setPrize] = useState<number>(route?.params?.game?.prize ?? route?.params?.prize ?? 100);
   const [streamUrl, setStreamUrl] = useState<string | null>(route?.params?.game?.streamUrl ?? route?.params?.streamUrl ?? null);
+  const [webrtcUrl, setWebrtcUrl] = useState<string | null>((route?.params?.game as any)?.webrtcUrl ?? route?.params?.webrtcUrl ?? null);
 
   const initCountdown = (sat?: string) => {
     if (!sat) return 3600;
@@ -83,7 +84,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
       const liveGame = games.find((g) => g.status === 'LIVE');
       if (liveGame) {
         setGameState('live');
-        navigation.replace('Live', { gameId: liveGame.id, streamUrl: liveGame.streamUrl || null });
+        navigation.replace('Live', { gameId: liveGame.id, streamUrl: liveGame.streamUrl || null, webrtcUrl: (liveGame as any).webrtcUrl || null });
         return;
       }
 
@@ -98,6 +99,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
         setPrize(next.prize ?? 100);
         setCountdown(initCountdown(next.scheduledAt));
         setStreamUrl(next.streamUrl || null);
+        setWebrtcUrl((next as any).webrtcUrl || null);
       }
     }).catch(() => {});
   }, []); // eslint-disable-line
@@ -120,7 +122,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
         const liveGame = games.find((g) => g.status === 'LIVE');
         if (liveGame) {
           setGameState('live');
-          navigation.replace('Live', { gameId: liveGame.id, streamUrl: liveGame.streamUrl || null });
+          navigation.replace('Live', { gameId: liveGame.id, streamUrl: liveGame.streamUrl || null, webrtcUrl: (liveGame as any).webrtcUrl || null });
           return;
         }
         // Update current game status (for chat unlock etc.)
@@ -253,7 +255,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (countdown === 0 && fromSocketCountdown.current) {
       setGameState('live');
-      navigation.replace('Live', { gameId, streamUrl });
+      navigation.replace('Live', { gameId, streamUrl, webrtcUrl });
     }
   }, [countdown]); // eslint-disable-line
 
@@ -394,7 +396,7 @@ export const LobbyScreen: React.FC<Props> = ({ navigation, route }) => {
           <TouchableOpacity
             style={styles.participarBtn}
             activeOpacity={0.85}
-            onPress={() => navigation.replace('Live', { gameId: game.id, streamUrl: game.streamUrl || null })}
+            onPress={() => navigation.replace('Live', { gameId: game.id, streamUrl: game.streamUrl || null, webrtcUrl: (game as any).webrtcUrl || null })}
           >
             <View style={styles.participarLeft}>
               <Text style={styles.participarText}>🔴 Entrar al juego</Text>

@@ -467,7 +467,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const handleEnterLobby = () => {
     if (freeGame?.status === 'LIVE') {
       setGameState('live');
-      navigation.navigate('Live', { gameId: freeGame.id, streamUrl: freeGame.streamUrl || null });
+      navigation.navigate('Live', { gameId: freeGame.id, streamUrl: freeGame.streamUrl || null, webrtcUrl: (freeGame as any).webrtcUrl || null });
     } else {
       setGameState('lobby');
       navigation.navigate('Lobby', freeGame ? { gameId: freeGame.id, game: freeGame } : undefined);
@@ -585,7 +585,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             onJoin={() => {
               if (freeGame?.status === 'LIVE') {
                 setGameState('live');
-                navigation.navigate('Live', { gameId: freeGame.id, streamUrl: freeGame.streamUrl || null });
+                navigation.navigate('Live', { gameId: freeGame.id, streamUrl: freeGame.streamUrl || null, webrtcUrl: (freeGame as any).webrtcUrl || null });
               } else {
                 setShowJoinModal(true);
               }
@@ -714,7 +714,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
 
           {vipGame?.status === 'LIVE' && isVipJoined ? (
             <TouchableOpacity
-              onPress={() => { setGameState('live'); navigation.navigate('Live', { gameId: vipGame.id, streamUrl: vipGame.streamUrl || null }); }}
+              onPress={() => { setGameState('live'); navigation.navigate('Live', { gameId: vipGame.id, streamUrl: vipGame.streamUrl || null, webrtcUrl: (vipGame as any).webrtcUrl || null }); }}
               style={styles.participarBtn}
               activeOpacity={0.85}
             >
@@ -727,7 +727,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           ) : vipGame?.status === 'LIVE' && !isVipJoined ? (
             <TouchableOpacity
-              onPress={() => { setGameState('live'); navigation.navigate('Live', { gameId: vipGame.id, streamUrl: vipGame.streamUrl || null }); }}
+              onPress={() => { setGameState('live'); navigation.navigate('Live', { gameId: vipGame.id, streamUrl: vipGame.streamUrl || null, webrtcUrl: (vipGame as any).webrtcUrl || null }); }}
               style={styles.participarBtn}
               activeOpacity={0.85}
             >

@@ -11,6 +11,15 @@ import { AuthRequest } from '../types';
 import { AppError } from '../middleware/errorHandler';
 import { sendBroadcast } from '../services/pushNotifications';
 
+const WHEP_BASE = process.env.WEBRTC_WHEP_BASE ?? '';
+
+function withWebrtcUrl<T extends { muxStreamKey?: string | null }>(game: T): T & { webrtcUrl: string | null } {
+  const webrtcUrl = WHEP_BASE && game.muxStreamKey
+    ? `${WHEP_BASE}/live/${game.muxStreamKey}/whep`
+    : null;
+  return { ...game, webrtcUrl };
+}
+
 const UPLOADS_DIR = path.join(__dirname, '../../uploads/prizes');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
@@ -168,7 +177,7 @@ export async function listGames(req: Request, res: Response, next: NextFunction)
       prisma.game.count({ where }),
     ]);
 
-    const games = allGames.map(withNextOccurrence);
+    const games = allGames.map(withNextOccurrence).map(withWebrtcUrl);
     res.json({ data: games, total, page, limit });
   } catch (err) {
     next(err);
@@ -193,7 +202,7 @@ export async function getGame(req: Request, res: Response, next: NextFunction): 
       return;
     }
 
-    res.json({ data: withNextOccurrence(game) });
+    res.json({ data: withWebrtcUrl(withNextOccurrence(game)) });
   } catch (err) {
     next(err);
   }

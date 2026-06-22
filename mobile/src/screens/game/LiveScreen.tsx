@@ -26,6 +26,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { JuvShapes } from '../../components/JuvShapes';
 import { SparkleMotif } from '../../components/JuvMotifs';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
+import { WhepPlayer } from '../../components/WhepPlayer';
 import { Colors } from '../../theme/colors';
 import { useStore } from '../../store/useStore';
 import { gamesApi } from '../../services/api';
@@ -62,6 +63,32 @@ export const LiveScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user, chatMessages, addChatMessage, setGameState } = useStore();
   const gameId: string = route?.params?.gameId || 'default';
   const streamUrl: string | null = route?.params?.streamUrl || null;
+  const webrtcUrl: string | null = route?.params?.webrtcUrl || null;
+
+  // 'webrtc' → try WhepPlayer first; 'hls' → use YouTubePlayer; 'deciding' → timeout pending
+  const [videoMode, setVideoMode] = useState<'deciding' | 'webrtc' | 'hls'>(
+    webrtcUrl ? 'deciding' : 'hls'
+  );
+  const webrtcTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // If webrtcUrl is present, give WebRTC 5s to connect before falling back to HLS
+  useEffect(() => {
+    if (!webrtcUrl) return;
+    webrtcTimeoutRef.current = setTimeout(() => {
+      setVideoMode(m => m === 'deciding' ? 'hls' : m);
+    }, 5000);
+    return () => { if (webrtcTimeoutRef.current) clearTimeout(webrtcTimeoutRef.current); };
+  }, [webrtcUrl]); // eslint-disable-line
+
+  const handleWebrtcConnected = () => {
+    if (webrtcTimeoutRef.current) clearTimeout(webrtcTimeoutRef.current);
+    setVideoMode('webrtc');
+  };
+
+  const handleWebrtcFailed = () => {
+    if (webrtcTimeoutRef.current) clearTimeout(webrtcTimeoutRef.current);
+    setVideoMode('hls');
+  };
 
   const [phase, setPhase] = useState<Phase>('waiting');
   const [questionIdx, setQuestionIdx] = useState(0);
@@ -335,9 +362,21 @@ const getAnswerBg = (idx: number): string => {
       <JuvShapes density={0.8} seed={1} />
 
       {/* ── VIDEO / AVATAR ─────────────────────────────────────── */}
-      {streamUrl ? (
+      {(streamUrl || webrtcUrl) ? (
         <Animated.View style={videoAnimStyle}>
-          <YouTubePlayer streamUrl={streamUrl} style={RN.absoluteFill} />
+          {/* WebRTC (sub-second latency) with transparent HLS fallback */}
+          {webrtcUrl && videoMode !== 'hls' && (
+            <WhepPlayer
+              whepUrl={webrtcUrl}
+              style={RN.absoluteFill}
+              onConnected={handleWebrtcConnected}
+              onFailed={handleWebrtcFailed}
+            />
+          )}
+          {/* HLS: always rendered when webrtcUrl absent, or as fallback */}
+          {(videoMode === 'hls' || !webrtcUrl) && streamUrl && (
+            <YouTubePlayer streamUrl={streamUrl} style={RN.absoluteFill} />
+          )}
         </Animated.View>
       ) : (
         // Fallback avatar (no stream) — hidden until question is sent

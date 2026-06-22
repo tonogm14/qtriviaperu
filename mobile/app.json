@@ -20,7 +20,10 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#3B0764"
       },
-      "package": "com.qtriviaperu.app"
+      "package": "com.qtriviaperu.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,6 +32,7 @@
     "plugins": [
       "expo-font",
       "expo-notifications",
+      "@config-plugins/react-native-webrtc",
       "expo-video",
       "expo-web-browser",
       [
@@ -40,6 +44,12 @@
       ]
     ],
     "newArchEnabled": true,
-    "sdkVersion": "54.0.0"
+    "sdkVersion": "54.0.0",
+    "extra": {
+      "eas": {
+        "projectId": "e7971eeb-5743-464f-9505-50c20784fb52"
+      }
+    },
+    "owner": "antoniogm14"
   }
 }
