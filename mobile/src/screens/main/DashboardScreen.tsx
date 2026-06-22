@@ -605,7 +605,9 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.vipBadgeText}>EVENTO ESPECIAL</Text>
+              <Text style={styles.vipBadgeText}>
+                {vipGame?.type === 'VIP' ? 'EVENTO VIP' : 'EVENTO ESPECIAL'}
+              </Text>
             </LinearGradient>
             <Text style={styles.vipTime}>
               {vipGame?.scheduledAt

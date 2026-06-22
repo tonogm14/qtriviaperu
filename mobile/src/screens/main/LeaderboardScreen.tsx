@@ -10,8 +10,11 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import { SparkleMotif } from '../../components/JuvMotifs';
+import { JuvShapes } from '../../components/JuvShapes';
 import { Colors } from '../../theme/colors';
 import { leaderboardApi } from '../../services/api';
+import { useStore } from '../../store/useStore';
 
 type Period = 'Hoy' | 'Semana' | 'Histórico';
 
@@ -21,17 +24,15 @@ const PERIOD_MAP: Record<Period, 'today' | 'week' | 'month' | 'all'> = {
   Histórico: 'all',
 };
 
-const AVATAR_COLORS = [
-  '#EC4899', '#34D399', '#FACC15', '#A855F7', '#F472B6',
-  '#60A5FA', '#F97316', '#34D399',
-];
+const AVATAR_HUES = ['#A855F7', '#EC4899', '#3B82F6', '#10B981', '#F97316', '#FACC15'];
 
 interface LeaderboardEntry {
   rank: number;
+  userId: string;
   name: string;
   username: string;
   gamesWon: number;
-  isMe: boolean;
+  isMe?: boolean;
 }
 
 interface Props {
@@ -40,6 +41,7 @@ interface Props {
 
 export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
   const tabBarHeight = useTabBarHeight();
+  const { user } = useStore();
   const [period, setPeriod] = useState<Period>('Semana');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,165 +53,165 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
     leaderboardApi
       .get(PERIOD_MAP[period])
       .then((res) => {
-        const data = res.data.data || [];
+        const data: LeaderboardEntry[] = (res.data.data || []).map((e: any) => ({
+          ...e,
+          isMe: e.userId === user?.id,
+        }));
         setLeaderboard(data);
       })
-      .catch(() => {
-        setError('No se pudo cargar el ranking. Intenta de nuevo.');
-      })
+      .catch(() => setError('No se pudo cargar el ranking. Intenta de nuevo.'))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, user?.id]);
 
   const showPodium = leaderboard.length >= 3;
-  const top3 = leaderboard.slice(0, 3);
+  // Podium order: 2nd, 1st, 3rd (visual layout)
+  const podium = showPodium
+    ? [leaderboard[1], leaderboard[0], leaderboard[2]]
+    : [];
   const rest = showPodium ? leaderboard.slice(3) : leaderboard;
 
-  const getInitials = (name: string) =>
-    name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
+  const initial = (name: string) => (name?.[0] ?? '?').toUpperCase();
+  const avatarHue = (rank: number) => AVATAR_HUES[rank % AVATAR_HUES.length];
 
   return (
     <LinearGradient
-      colors={[Colors.bgGradientStart, Colors.bgGradientMid, Colors.bgGradientEnd]}
+      colors={['#4C1D95', '#3B0764']}
       style={styles.container}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
     >
       <StatusBar style="light" />
+      <JuvShapes density={0.6} />
 
+      {/* Header */}
       <View style={styles.header}>
         <View style={{ width: 40 }} />
         <Text style={styles.headerTitle}>Leaderboard</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Period filter */}
-      <View style={styles.filterRow}>
-        {(['Hoy', 'Semana', 'Histórico'] as Period[]).map((p) => (
+      {/* Period tabs */}
+      <View style={styles.tabRow}>
+        {(['Hoy', 'Semana', 'Histórico'] as Period[]).map((p) =>
           period === p ? (
             <LinearGradient
               key={p}
               colors={['#EC4899', '#A855F7']}
-              style={[styles.filterBtn, styles.filterBtnActive]}
+              style={styles.tabActive}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
               <TouchableOpacity onPress={() => setPeriod(p)} activeOpacity={0.8}>
-                <Text style={styles.filterTxtActive}>{p}</Text>
+                <Text style={styles.tabTextActive}>{p}</Text>
               </TouchableOpacity>
             </LinearGradient>
           ) : (
             <TouchableOpacity
               key={p}
               onPress={() => setPeriod(p)}
-              style={styles.filterBtn}
+              style={styles.tab}
               activeOpacity={0.8}
             >
-              <Text style={styles.filterTxt}>{p}</Text>
+              <Text style={styles.tabText}>{p}</Text>
             </TouchableOpacity>
           )
-        ))}
+        )}
       </View>
 
       {loading ? (
-        <View style={styles.loadingContainer}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color={Colors.yellow} />
-          <Text style={styles.loadingText}>Cargando ranking...</Text>
+          <Text style={styles.loadingText}>Cargando ranking…</Text>
         </View>
       ) : error ? (
-        <View style={styles.errorContainer}>
+        <View style={styles.centered}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            onPress={() => setPeriod(period)}
-            style={styles.retryBtn}
-          >
+          <TouchableOpacity onPress={() => setPeriod(period)} style={styles.retryBtn}>
             <Text style={styles.retryText}>Reintentar</Text>
           </TouchableOpacity>
         </View>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight }]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 20 }]}
         >
           {/* Podium */}
           {showPodium && (
-            <View style={styles.podiumContainer}>
-              {/* 2nd place */}
-              <View style={[styles.podiumPlayer, styles.podiumSecond]}>
-                <View style={styles.rankBadge}>
-                  <Text style={styles.rankBadgeText}>2</Text>
-                </View>
-                <View style={[styles.avatar, { backgroundColor: AVATAR_COLORS[1] }]}>
-                  <Text style={styles.avatarText}>{getInitials(top3[1]?.name || 'P')}</Text>
-                </View>
-                <Text style={styles.podiumName}>{top3[1]?.name}</Text>
-                <Text style={styles.podiumScore}>🏆 {top3[1]?.gamesWon ?? 0}</Text>
-                <View style={[styles.podiumPedestal, { height: 60, backgroundColor: Colors.purple + 'CC' }]} />
-              </View>
-
-              {/* 1st place */}
-              <View style={[styles.podiumPlayer, styles.podiumFirst]}>
-                <Text style={styles.crownEmoji}>👑</Text>
-                <View style={styles.rankBadge}>
-                  <Text style={styles.rankBadgeText}>1</Text>
-                </View>
-                <View style={[styles.avatar, styles.avatarLarge, { backgroundColor: Colors.yellow }]}>
-                  <Text style={[styles.avatarText, { fontSize: 22, color: Colors.dark }]}>
-                    {getInitials(top3[0]?.name || 'A')}
-                  </Text>
-                </View>
-                <Text style={styles.podiumName}>{top3[0]?.name}</Text>
-                <Text style={[styles.podiumScore, { color: Colors.yellow, fontSize: 18 }]}>
-                  🏆 {top3[0]?.gamesWon ?? 0}
-                </Text>
-                <View style={[styles.podiumPedestal, { height: 85, backgroundColor: Colors.yellow + 'CC' }]} />
-              </View>
-
-              {/* 3rd place */}
-              <View style={[styles.podiumPlayer, styles.podiumThird]}>
-                <View style={styles.rankBadge}>
-                  <Text style={styles.rankBadgeText}>3</Text>
-                </View>
-                <View style={[styles.avatar, { backgroundColor: AVATAR_COLORS[4] }]}>
-                  <Text style={styles.avatarText}>{getInitials(top3[2]?.name || 'L')}</Text>
-                </View>
-                <Text style={styles.podiumName}>{top3[2]?.name}</Text>
-                <Text style={styles.podiumScore}>🏆 {top3[2]?.gamesWon ?? 0}</Text>
-                <View style={[styles.podiumPedestal, { height: 45, backgroundColor: Colors.pinkLight + 'CC' }]} />
-              </View>
+            <View style={styles.podiumRow}>
+              {podium.map((p) => {
+                const isFirst = p.rank === 1;
+                const size = isFirst ? 84 : 68;
+                const hue = avatarHue(p.rank);
+                return (
+                  <View
+                    key={p.rank}
+                    style={[styles.podiumCol, isFirst && styles.podiumColFirst]}
+                  >
+                    {isFirst && (
+                      <View style={styles.sparkleWrap}>
+                        <SparkleMotif size={20} color="#FACC15" />
+                      </View>
+                    )}
+                    {/* Rank badge */}
+                    <View style={[
+                      styles.rankBadge,
+                      { backgroundColor: isFirst ? '#FACC15' : '#A855F7' },
+                    ]}>
+                      <Text style={[
+                        styles.rankBadgeText,
+                        { color: isFirst ? '#1F0A2E' : 'white' },
+                      ]}>{p.rank}</Text>
+                    </View>
+                    {/* Avatar */}
+                    <View style={[
+                      styles.podiumAvatar,
+                      {
+                        width: size, height: size, borderRadius: size / 2,
+                        borderColor: isFirst ? '#FACC15' : 'white',
+                      },
+                    ]}>
+                      <LinearGradient
+                        colors={[hue, '#6B21A8']}
+                        style={[styles.avatarGradient, { borderRadius: size / 2 }]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      >
+                        <Text style={[styles.avatarText, { fontSize: size * 0.38 }]}>
+                          {initial(p.name)}
+                        </Text>
+                      </LinearGradient>
+                    </View>
+                    <Text style={styles.podiumName} numberOfLines={1}>{p.name}</Text>
+                    <View style={styles.winsBadge}>
+                      <Text style={styles.winsBadgeText}>🏆 {p.gamesWon}</Text>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
 
-          {/* Rest of leaderboard */}
-          <View style={styles.listSection}>
-            {rest.map((player) => (
+          {/* List */}
+          <View style={styles.list}>
+            {rest.map((p) => (
               <View
-                key={`${player.rank}-${player.username}`}
-                style={[
-                  styles.rankRow,
-                  player.isMe && styles.rankRowMe,
-                ]}
+                key={`${p.rank}-${p.userId}`}
+                style={[styles.row, p.isMe && styles.rowMe]}
               >
-                <Text style={[styles.rankNum, player.isMe && { color: Colors.yellow }]}>
-                  #{player.rank}
+                <Text style={[styles.rowRank, p.isMe && { color: 'white' }]}>
+                  {p.rank}
                 </Text>
-                <View style={[
-                  styles.rankAvatar,
-                  { backgroundColor: player.isMe ? Colors.pink : AVATAR_COLORS[player.rank % AVATAR_COLORS.length] }
-                ]}>
-                  <Text style={styles.rankAvatarText}>{getInitials(player.name)}</Text>
-                </View>
-                <View style={styles.rankInfo}>
-                  <Text style={[styles.rankName, player.isMe && { color: Colors.yellow }]}>
-                    {player.name}{player.isMe ? ' (Tú)' : ''}
-                  </Text>
-                  <Text style={styles.rankUsername}>@{player.username}</Text>
-                </View>
-                <Text style={[styles.rankScore, player.isMe && { color: Colors.yellow }]}>
-                  🏆 {player.gamesWon ?? 0}
+                <LinearGradient
+                  colors={p.isMe ? ['#EC4899', '#A855F7'] : [avatarHue(p.rank), '#3B0764']}
+                  style={styles.rowAvatar}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.rowAvatarText}>{initial(p.name)}</Text>
+                </LinearGradient>
+                <Text style={[styles.rowName, p.isMe && { color: 'white' }]} numberOfLines={1}>
+                  {p.name}{p.isMe ? ' (Tú)' : ''}
+                </Text>
+                <Text style={[styles.rowWins, p.isMe && { color: 'white' }]}>
+                  🏆 {p.gamesWon}
                 </Text>
               </View>
             ))}
@@ -218,8 +220,6 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
           {leaderboard.length === 0 && (
             <Text style={styles.emptyText}>No hay datos para este período.</Text>
           )}
-
-          <View style={{ height: 100 }} />
         </ScrollView>
       )}
     </LinearGradient>
@@ -227,9 +227,7 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     paddingTop: 60,
     paddingHorizontal: 18,
@@ -238,214 +236,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  headerTitle: {
-    color: Colors.white,
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.5,
+  headerTitle: { color: 'white', fontSize: 22, fontWeight: '900', letterSpacing: -0.5 },
+  tabRow: { flexDirection: 'row', paddingHorizontal: 18, gap: 8, marginBottom: 8 },
+  tab: {
+    paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
-  filterRow: {
+  tabActive: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999 },
+  tabText: { color: 'white', fontSize: 13, fontWeight: '800' },
+  tabTextActive: { color: 'white', fontSize: 13, fontWeight: '800' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingText: { color: 'rgba(255,255,255,0.5)', fontSize: 14 },
+  errorText: { color: '#F87171', fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  retryBtn: { backgroundColor: Colors.yellow, borderRadius: 999, paddingHorizontal: 24, paddingVertical: 10 },
+  retryText: { color: '#1F0A2E', fontSize: 15, fontWeight: '800' },
+  scroll: { paddingHorizontal: 18, paddingTop: 8 },
+
+  // Podium
+  podiumRow: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 8,
-    marginBottom: 8,
-  },
-  filterBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  filterBtnActive: {
-    backgroundColor: Colors.yellow,
-    borderColor: Colors.yellow,
-  },
-  filterTxt: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  filterTxtActive: {
-    color: Colors.textOnYellow,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    paddingHorizontal: 32,
-  },
-  errorText: {
-    color: Colors.red,
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  retryBtn: {
-    backgroundColor: Colors.yellow,
-    borderRadius: 999,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  retryText: {
-    color: Colors.textOnYellow,
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  scroll: {
-    paddingHorizontal: 20,
-  },
-  podiumContainer: {
-    flexDirection: 'row',
     alignItems: 'flex-end',
-    justifyContent: 'center',
-    paddingVertical: 24,
-    gap: 8,
+    gap: 6,
+    paddingVertical: 16,
+    paddingBottom: 28,
   },
-  podiumPlayer: {
-    alignItems: 'center',
-    flex: 1,
-    position: 'relative',
-  },
-  podiumFirst: {
-    marginBottom: 0,
-  },
-  podiumSecond: {
-    marginBottom: 0,
-  },
-  podiumThird: {
-    marginBottom: 0,
-  },
-  crownEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
+  podiumCol: { alignItems: 'center', flex: 1 },
+  podiumColFirst: { flex: 1.2 },
+  sparkleWrap: { marginBottom: 4 },
   rankBadge: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: Colors.dark,
-    borderWidth: 2,
-    borderColor: Colors.yellow,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: -10, zIndex: 2,
   },
-  rankBadgeText: {
-    color: Colors.yellow,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  avatarLarge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  rankBadgeText: { fontSize: 11, fontWeight: '900' },
+  podiumAvatar: {
     borderWidth: 3,
-    borderColor: Colors.yellow,
+    overflow: 'hidden',
   },
-  avatarText: {
-    color: Colors.white,
-    fontSize: 18,
-    fontWeight: '900',
+  avatarGradient: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
   },
+  avatarText: { color: 'white', fontWeight: '900' },
   podiumName: {
-    color: Colors.white,
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 6,
-    textAlign: 'center',
+    color: 'white', fontSize: 13, fontWeight: '800',
+    marginTop: 8, textAlign: 'center',
   },
-  podiumScore: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
+  winsBadge: {
+    backgroundColor: '#FACC15', borderRadius: 999,
+    paddingHorizontal: 9, paddingVertical: 3, marginTop: 4,
   },
-  podiumPedestal: {
-    width: '80%',
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-  },
-  listSection: {
-    gap: 8,
-  },
-  rankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  winsBadgeText: { color: '#1F0A2E', fontSize: 11, fontWeight: '800' },
+
+  // List
+  list: { gap: 6 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10, paddingHorizontal: 14,
     backgroundColor: 'rgba(0,0,0,0.25)',
     borderRadius: 999,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    marginBottom: 6,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
   },
-  rankRowMe: {
-    backgroundColor: '#A855F7',
-    borderColor: 'transparent',
+  rowMe: { backgroundColor: 'transparent', borderWidth: 0, overflow: 'hidden' },
+  rowRank: {
+    width: 26, fontSize: 13, fontWeight: '800',
+    color: 'rgba(255,255,255,0.7)', textAlign: 'center',
   },
-  rankNum: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 14,
-    fontWeight: '800',
-    width: 36,
+  rowAvatar: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
   },
-  rankAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankAvatarText: {
-    color: Colors.white,
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  rankInfo: {
-    flex: 1,
-  },
-  rankName: {
-    color: Colors.white,
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  rankUsername: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-  },
-  rankScore: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 16,
-    fontWeight: '800',
-  },
+  rowAvatarText: { color: 'white', fontSize: 14, fontWeight: '900' },
+  rowName: { flex: 1, fontSize: 14, fontWeight: '800', color: 'white' },
+  rowWins: { fontSize: 13, fontWeight: '800', color: '#FACC15' },
   emptyText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 15,
-    textAlign: 'center',
-    paddingVertical: 32,
+    color: 'rgba(255,255,255,0.4)', fontSize: 15,
+    textAlign: 'center', paddingVertical: 40,
   },
 });
