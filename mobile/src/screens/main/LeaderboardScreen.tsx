@@ -60,8 +60,9 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
       .finally(() => setLoading(false));
   }, [period]);
 
+  const showPodium = leaderboard.length >= 3;
   const top3 = leaderboard.slice(0, 3);
-  const rest = leaderboard.slice(3);
+  const rest = showPodium ? leaderboard.slice(3) : leaderboard;
 
   const getInitials = (name: string) =>
     name
@@ -134,7 +135,7 @@ export const LeaderboardScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight }]}
         >
           {/* Podium */}
-          {top3.length >= 3 && (
+          {showPodium && (
             <View style={styles.podiumContainer}>
               {/* 2nd place */}
               <View style={[styles.podiumPlayer, styles.podiumSecond]}>

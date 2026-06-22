@@ -61,6 +61,7 @@ export async function getLeaderboard(req: Request, res: Response, next: NextFunc
 
     const [allUsers, prizeAgg] = await Promise.all([
       prisma.user.findMany({
+        where: { role: 'USER' },
         select: { id: true, username: true, name: true, isVip: true },
         orderBy: { createdAt: 'asc' },
       }),
