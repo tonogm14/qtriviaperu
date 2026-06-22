@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { api } from '../services/api';
 
@@ -35,9 +35,11 @@ export const YouTubePlayer: React.FC<Props> = ({ streamUrl, style }) => {
       if (playing) {
         hasPlayedRef.current = true;
         setIsPlaying(true);
+        setOffline(false);
       } else if (hasPlayedRef.current && resolvedUrlRef.current) {
-        // Stream stalled — reload entirely to re-fetch live edge
+        // Stream stalled — reload to re-fetch live edge
         hasPlayedRef.current = false;
+        setIsPlaying(false);
         setTimeout(() => {
           player.replaceAsync(resolvedUrlRef.current)
             .then(() => player.play())
@@ -63,9 +65,10 @@ export const YouTubePlayer: React.FC<Props> = ({ streamUrl, style }) => {
     setOffline(false);
     tryLoad(resolvedUrl);
 
+    // If still not playing after 10s → offline
     const t = setTimeout(() => {
       setIsPlaying(p => { if (!p) setOffline(true); return p; });
-    }, 12000);
+    }, 10000);
     return () => clearTimeout(t);
   }, [streamUrl]);
 
@@ -78,43 +81,52 @@ export const YouTubePlayer: React.FC<Props> = ({ streamUrl, style }) => {
       tryLoad(resolvedUrl);
       setTimeout(() => {
         setIsPlaying(p => { if (!p) setOffline(true); return p; });
-      }, 12000);
+      }, 10000);
     }, 5000);
     return () => clearInterval(interval);
   }, [offline, resolvedUrl]);
 
-  if (!resolvedUrl || offline) {
-    return (
-      <View style={[styles.container, styles.fallback, style]}>
-        <Text style={styles.dot}>📡</Text>
-        <Text style={styles.title}>EN VIVO</Text>
-        <Text style={styles.sub}>La transmisión comenzará en breve...</Text>
-      </View>
-    );
-  }
-
-  if (!isPlaying) {
-    return <View style={[styles.container, style]} />;
-  }
-
   return (
     <View style={[styles.container, { width, height }, style]} pointerEvents="none">
+      {/* VideoView always mounted so expo-video can fire events */}
       <VideoView
         player={player}
-        style={{ width, height }}
+        style={StyleSheet.absoluteFill}
         contentFit="cover"
         nativeControls={false}
         fullscreenOptions={{ isFullscreenButtonHidden: true }}
         allowsPictureInPicture={false}
       />
+
+      {/* Overlay: offline */}
+      {offline && (
+        <View style={[StyleSheet.absoluteFill, styles.overlay]}>
+          <Text style={styles.dot}>📡</Text>
+          <Text style={styles.title}>EN VIVO</Text>
+          <Text style={styles.sub}>La transmisión comenzará en breve...</Text>
+        </View>
+      )}
+
+      {/* Overlay: loading (not yet playing, not offline) */}
+      {!isPlaying && !offline && resolvedUrl ? (
+        <View style={[StyleSheet.absoluteFill, styles.overlay]}>
+          <ActivityIndicator size="large" color="rgba(255,255,255,0.6)" />
+          <Text style={styles.sub}>Conectando transmisión...</Text>
+        </View>
+      ) : null}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { overflow: 'hidden', backgroundColor: '#000' },
-  fallback: { alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#0a0a0a' },
+  overlay: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#0a0a0a',
+  },
   dot: { fontSize: 36 },
   title: { color: 'white', fontSize: 22, fontWeight: '900', letterSpacing: 4 },
-  sub: { color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 6 },
+  sub: { color: 'rgba(255,255,255,0.55)', fontSize: 13 },
 });
