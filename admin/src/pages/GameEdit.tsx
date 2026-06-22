@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Save, X, Plus, Trash2, Search, RefreshCw, Repeat2, Heart, Crown, Star, ChevronDown, ChevronUp, Radio, Copy, Tv2, GripVertical, Zap, Key, Trash } from 'lucide-react'
+import { Save, X, Plus, Trash2, Search, RefreshCw, Repeat2, Heart, Crown, Star, ChevronDown, ChevronUp, Radio, Copy, Tv2, GripVertical, Zap, Key, Trash, Bell } from 'lucide-react'
 import { Card, CardHeader } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
 import { Input, Select, Textarea } from '../components/ui/Input'
@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { useGame, useCreateGame, useUpdateGame, useQuestions, useSetGameQuestions, useCreateQuestion, useGameStream, useCreateStream, useDeleteStream, useInviteCodes, useGenerateInviteCodes, useDeleteInviteCode } from '../api/hooks'
 import type { InviteCode } from '../api/client'
+import { gamesApi } from '../api/client'
 import type { Question, GameType, WinnerMode, PrizeSlot, PrizeMode } from '../types'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -252,6 +253,12 @@ export function GameEdit() {
   const [formReady, setFormReady] = useState(isNew)
   const [saveError, setSaveError] = useState('')
   const [savedOk, setSavedOk] = useState(false)
+  const [notifyOpen, setNotifyOpen] = useState(false)
+  const [notifyTitle, setNotifyTitle] = useState('')
+  const [notifyBody, setNotifyBody] = useState('')
+  const [notifySending, setNotifySending] = useState(false)
+  const [notifyError, setNotifyError] = useState('')
+  const [notifiedNew, setNotifiedNew] = useState(false)
 
   const [prizeType, setPrizeType] = useState<'MONETARY' | 'PHYSICAL'>('MONETARY')
   const [prizeTitle, setPrizeTitle] = useState('')
@@ -315,6 +322,17 @@ export function GameEdit() {
       const rm = (existing as any).recurringMode
       setEmissionMode(rm === 'DAILY' || rm === 'CONTINUOUS' ? 'DAILY' : 'ONCE')
       setRequiresCode(!!(existing as any).requiresCode)
+      setNotifiedNew(!!(existing as any).notifiedNew)
+      // Pre-fill notification message with game details
+      const typeLabel = existing.type === 'VIP' ? 'VIP' : existing.type === 'SPECIAL' ? 'Especial' : 'Gratis'
+      const prize = (existing.prize ?? 0) > 0 ? ` · Premio S/${Number(existing.prize).toLocaleString('es-PE')}` : ''
+      const when = existing.scheduledAt
+        ? new Date(existing.scheduledAt).toLocaleString('es-PE', {
+            timeZone: 'America/Lima', weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true,
+          })
+        : ''
+      setNotifyTitle(`🎮 Nuevo juego ${typeLabel}: ${existing.title}`)
+      setNotifyBody(`${when}${prize}. ¡Regístrate ahora!`)
       setFormReady(true)
     }
   }, [existing, formReady])
@@ -427,6 +445,22 @@ export function GameEdit() {
     }
   }
 
+  const handleNotify = async () => {
+    if (!id) return
+    setNotifySending(true)
+    setNotifyError('')
+    try {
+      await gamesApi.notify(id, notifyTitle, notifyBody)
+      setNotifiedNew(true)
+      setNotifyOpen(false)
+    } catch (err: any) {
+      const d = err?.response?.data
+      setNotifyError(d?.error ?? d?.message ?? 'Error al enviar la notificación.')
+    } finally {
+      setNotifySending(false)
+    }
+  }
+
   const isSaving = createGame.isPending || updateGame.isPending || setGameQuestions.isPending
 
   if (!isNew && isLoading) {
@@ -460,6 +494,11 @@ export function GameEdit() {
         </div>
         <div className="page-actions">
           <Button kind="ghost" icon={X} onClick={() => navigate('/games')}>Cancelar</Button>
+          {!isNew && !notifiedNew && (
+            <Button kind="ghost" icon={Bell} onClick={() => setNotifyOpen(true)}>
+              Notificar usuarios
+            </Button>
+          )}
           <Button kind="primary" icon={Save} onClick={handleSave} disabled={isSaving}>
             {isSaving ? 'Guardando…' : savedOk ? '✓ Guardado' : 'Guardar cambios'}
           </Button>
@@ -1242,6 +1281,33 @@ export function GameEdit() {
           addQuestion(q)
         }}
       />
+
+      <Modal open={notifyOpen} onClose={() => setNotifyOpen(false)} title="Notificar a todos los usuarios" width={480}>
+        <p style={{ fontSize: 13, color: 'var(--ink-500)', marginBottom: 16 }}>
+          Se enviará una notificación push a todos los usuarios registrados. Solo se puede enviar una vez por juego.
+        </p>
+        <div style={{ display: 'grid', gap: 12 }}>
+          <Input
+            label="Título"
+            value={notifyTitle}
+            onChange={e => setNotifyTitle(e.target.value)}
+          />
+          <Input
+            label="Mensaje"
+            value={notifyBody}
+            onChange={e => setNotifyBody(e.target.value)}
+          />
+        </div>
+        {notifyError && (
+          <p style={{ color: 'var(--red-500)', fontSize: 13, marginTop: 10 }}>{notifyError}</p>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <Button kind="ghost" onClick={() => setNotifyOpen(false)}>Cancelar</Button>
+          <Button kind="primary" icon={Bell} onClick={handleNotify} disabled={notifySending || !notifyTitle || !notifyBody}>
+            {notifySending ? 'Enviando…' : 'Enviar notificación'}
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

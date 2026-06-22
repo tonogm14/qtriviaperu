@@ -91,6 +91,7 @@ model Game {
   notified1h      Boolean        @default(false)
   notified5m      Boolean        @default(false)
   notifiedStart   Boolean        @default(false)
+  notifiedNew     Boolean        @default(false)
   streamUrl           String?
   muxStreamId         String?
   muxStreamKey        String?

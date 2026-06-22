@@ -94,6 +94,7 @@ router.post('/', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), games
 router.put('/:id', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.updateGame);
 router.put('/:id/questions', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.setGameQuestions);
 router.delete('/:id', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.deleteGame);
+router.post('/:id/notify',             authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.notifyGame as RequestHandler);
 router.post('/:id/start',              authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.startGame as RequestHandler);
 router.post('/:id/close-registration', authenticate, requirePermission(PERMISSIONS.GAMES_WRITE), gamesController.closeRegistration as RequestHandler);
 router.get( '/:id/stream', authenticate, requirePermission(PERMISSIONS.GAMES_READ),  streamController.getStream);

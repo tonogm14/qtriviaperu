@@ -222,25 +222,27 @@ export async function createGame(req: Request, res: Response, next: NextFunction
       },
     });
 
-    // Notify all users about the new game (fire-and-forget)
-    const typeLabel = game.type === 'VIP' ? 'VIP' : game.type === 'SPECIAL' ? 'Especial' : 'Gratis';
-    const prize = game.prize > 0 ? ` · Premio S/${game.prize.toLocaleString('es-PE')}` : '';
-    const when = game.scheduledAt
-      ? new Date(game.scheduledAt).toLocaleString('es-PE', {
-          timeZone: 'America/Lima',
-          weekday: 'short',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        })
-      : '';
-    sendBroadcast(
-      `🎮 Nuevo juego ${typeLabel}: ${game.title}`,
-      `${when}${prize}. ¡Regístrate ahora!`,
-      { data: { type: 'new_game', gameId: game.id } }
-    ).catch(() => {});
-
     res.status(201).json({ data: game });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function notifyGame(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const game = await prisma.game.findUnique({ where: { id: param(req, 'id') } });
+    if (!game) { res.status(404).json({ error: 'Juego no encontrado' }); return; }
+    if (game.notifiedNew) { res.status(409).json({ error: 'Ya se envió la notificación para este juego' }); return; }
+
+    const { title, body } = z.object({
+      title: z.string().min(1),
+      body: z.string().min(1),
+    }).parse(req.body);
+
+    const sent = await sendBroadcast(title, body, { data: { type: 'new_game', gameId: game.id } });
+    await prisma.game.update({ where: { id: game.id }, data: { notifiedNew: true } });
+
+    res.json({ sent });
   } catch (err) {
     next(err);
   }

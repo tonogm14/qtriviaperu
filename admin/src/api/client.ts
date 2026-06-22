@@ -82,6 +82,8 @@ export const gamesApi = {
     api.post<{ data: InviteCode[] }>(`/api/games/${id}/invite-codes/generate`, data),
   deleteInviteCode: (gameId: string, codeId: string) =>
     api.delete(`/api/games/${gameId}/invite-codes/${codeId}`),
+  notify: (id: string, title: string, body: string) =>
+    api.post<{ sent: number }>(`/api/games/${id}/notify`, { title, body }),
 }
 
 export interface GameEntry {
