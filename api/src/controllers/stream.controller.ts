@@ -6,10 +6,15 @@ const pid = (req: Request) => Array.isArray(req.params.id) ? req.params.id[0] : 
 
 const RTMP_HOST     = process.env.RTMP_HOST ?? 'localhost';
 const MEDIAMTX_RTMP = `rtmp://${RTMP_HOST}:1935/live`;
+const WHEP_BASE     = process.env.WEBRTC_WHEP_BASE ?? '';
 
 function buildResponse(game: { streamUrl: string | null; muxStreamKey: string | null }) {
+  const webrtcUrl = WHEP_BASE && game.muxStreamKey
+    ? `${WHEP_BASE}/live/${game.muxStreamKey}/whep`
+    : null;
   return {
     streamUrl:  game.streamUrl,
+    webrtcUrl,
     streamKey:  game.muxStreamKey,
     rtmpServer: MEDIAMTX_RTMP,
     rtmpUrl:    `${MEDIAMTX_RTMP}/${game.muxStreamKey}`,
@@ -32,9 +37,11 @@ export async function createStream(req: Request, res: Response, next: NextFuncti
       data: { streamUrl, muxStreamId: 'mediamtx', muxStreamKey: streamKey },
     });
 
+    const webrtcUrl = WHEP_BASE ? `${WHEP_BASE}/live/${streamKey}/whep` : null;
     res.json({
       data: {
         streamUrl,
+        webrtcUrl,
         streamKey,
         rtmpServer: MEDIAMTX_RTMP,
         rtmpUrl:    `${MEDIAMTX_RTMP}/${streamKey}`,
